@@ -13,6 +13,11 @@
   同じバイナリがエディタ（GUI）とヘッドレスCLI（`godot --headless ...`）を
   兼ねています。
 - `godot/project.godot` をGodotエディタで開いてください。
+- **エディタをsudo（root）で起動しないでください。** インポートキャッシュ
+  `godot/.godot/` がroot所有になり、以後は通常ユーザーでのインポート・
+  書き出しが権限エラーで失敗するようになります（`.import`が`valid=false`に
+  書き換わり、フォントや翻訳が焼き込まれない壊れたビルドができます）。
+  そうなった場合は `sudo rm -rf godot/.godot` で消せば再生成されます。
 
 ## ディレクトリ構成
 
@@ -22,13 +27,27 @@
 
 ## ビルド/書き出し
 
-書き出しプリセット（`godot/export_presets.cfg`）はM1でエディタから
-Web（ブラウザ）とネイティブ（Windows/Mac/Linux, 将来的にSteam向け）を
-設定し、以後はコミットして共有します。
+書き出しプリセット（`godot/export_presets.cfg`）にWeb（ブラウザ）と
+ネイティブ（Windows/Linux, 将来的にSteam向け）を定義しています。
+成果物はリポジトリ直下の `build/` に出ます（gitignore済み）。
 
 ```bash
-# ヘッドレスでの書き出し例（要 Godot 4.x, export templates, プリセット設定後）
-godot --headless --path godot --export-release "Web" build/web/index.html
+# 事前に一度インポートしておく（.translation等の生成物を作るため）
+godot --headless --path godot --import
+
+# 書き出し（出力先はexport_presets.cfgのexport_pathに従う）
+mkdir -p build/web
+godot --headless --path godot --export-release "Web"
+
+# ローカルで確認
+(cd build/web && python3 -m http.server 8099)
+# -> http://localhost:8099/index.html
+```
+
+ヘッドレステスト:
+
+```bash
+godot --headless --path godot --script res://tests/run_tests.gd
 ```
 
 ## 実装の進め方
