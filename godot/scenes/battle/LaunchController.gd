@@ -9,6 +9,9 @@ extends Node2D
 ##
 ## 座標はアリーナのユニット系。ArenaRootの子として置くこと。
 
+## プロトタイプの velocityArrow と同じ lime。
+const ARROW_COLOR := Color(0, 1, 0)
+
 ## 引いた距離(ユニット)を初速(ユニット/秒)に変換する倍率。
 @export_range(0.1, 20.0, 0.1) var pull_to_speed: float = 5.0
 
@@ -51,31 +54,33 @@ func _unhandled_input(event: InputEvent) -> void:
 		queue_redraw()
 
 
-func _release() -> void:
-	# 引いた向きと逆に飛ぶ（パチンコと同じ）。
+## 引いた向きと逆に飛ぶ（パチンコと同じ）。max_pullで頭打ちにする。
+func _effective_pull() -> Vector2:
 	var pull := _origin - _current
 	if pull.length() > max_pull:
-		pull = pull.normalized() * max_pull
+		return pull.normalized() * max_pull
+	return pull
+
+
+func _release() -> void:
 	queue_redraw()
-	launched.emit(_origin, pull * pull_to_speed)
+	launched.emit(_origin, _effective_pull() * pull_to_speed)
 
 
+## プロトタイプと同じ塗り潰しの三角形で狙いを示す。
+## 頂点が発射地点、底辺が引いた先に広がる。発射は引いた向きと逆なので、
+## 頂点はそのまま飛んでいく向きを指す。底辺の半幅は引いた距離の1/4。
 func _draw() -> void:
 	if not _dragging:
 		return
 
-	var pull := _origin - _current
-	if pull.length() > max_pull:
-		pull = pull.normalized() * max_pull
+	# 上限まで引いたらそれ以上は伸びない。見た目と実際の初速をずらさないため、
+	# 描画も頭打ちにした位置で行う（プロトタイプに上限はなかった）。
+	var pull := _effective_pull()
+	var pulled_to := _origin - pull
+	var diff := pulled_to - _origin
+	var half_base := diff.orthogonal() / 4.0
 
-	# 発射地点
-	draw_circle(_origin, 0.12, Color(1, 1, 1, 0.8))
-	# 飛んでいく向きと強さ
-	var tip := _origin + pull
-	draw_line(_origin, tip, Color(0.4, 1, 0.4, 0.9), 0.08)
-	if pull.length() > 0.2:
-		var dir := pull.normalized()
-		var side := dir.orthogonal() * 0.18
-		draw_colored_polygon(
-			[tip + dir * 0.3, tip + side, tip - side], Color(0.4, 1, 0.4, 0.9)
-		)
+	draw_colored_polygon(
+		[_origin, pulled_to - half_base, pulled_to + half_base], ARROW_COLOR
+	)
