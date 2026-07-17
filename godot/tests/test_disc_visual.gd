@@ -20,6 +20,7 @@ func run(check: Callable) -> void:
 	_test_no_aliasing(check)
 	_test_tail_encodes_speed(check)
 	_test_visual_rps_monotonic(check)
+	_test_draw_order(check)
 
 
 func _disc() -> Disc:
@@ -114,6 +115,41 @@ func _test_tail_encodes_speed(check: Callable) -> void:
 	check.call(d.tail_ratio() <= 1.0 + EPS, "尾: 上限を超えても一周より長くならない")
 
 	d.free()
+
+
+## 回転数が高いコマほど手前(z_indexが大)に描かれること。重なったとき勢いのある
+## 方が上に見えるようにするための順位付け。床(z=0・不透明)より後ろへは落とさない。
+func _test_draw_order(check: Callable) -> void:
+	# 単調: 回転数が上がってz_indexが下がることはない。
+	var prev := -1
+	var monotonic := true
+	for i in 401:
+		var z := Disc.draw_order_z(i * 0.1)
+		if z < prev:
+			monotonic = false
+		prev = z
+	check.call(monotonic, "描画順: 回転数が上がってz_indexが下がることはない")
+
+	# 差のある回転数では、速い方が厳密に手前(重なったとき確実に上)。
+	check.call(
+		Disc.draw_order_z(20.0) > Disc.draw_order_z(10.0),
+		"描画順: 回転数の高い方がz_indexが大きい (%d > %d)" % [
+			Disc.draw_order_z(20.0), Disc.draw_order_z(10.0)
+		]
+	)
+
+	# 床(z=0)より後ろへ落とさない。rpsがどうであれz_indexは0以上。
+	var never_negative := true
+	for i in 401:
+		if Disc.draw_order_z(i * 0.1) < 0:
+			never_negative = false
+	check.call(never_negative, "描画順: z_indexが0未満にならない(不透明な床の後ろへ落ちない)")
+
+	# 上限で頭打ち。青天井だと予告・衝撃波のレイヤー(Battle.OVERLAY_Z)を侵す。
+	check.call(
+		Disc.draw_order_z(999.0) <= Disc.DRAW_ORDER_Z_MAX,
+		"描画順: z_indexが上限%dで頭打ち (%d)" % [Disc.DRAW_ORDER_Z_MAX, Disc.draw_order_z(999.0)]
+	)
 
 
 func _test_visual_rps_monotonic(check: Callable) -> void:

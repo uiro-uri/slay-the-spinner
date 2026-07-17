@@ -44,6 +44,15 @@ const MARK_ARC := 0.5
 ## 尾の太さ(半径に対する割合)。
 const TAIL_WIDTH_RATIO := 0.28
 
+## 描画順(z_index)の分解能。回転数をz_indexへ写すときの倍率。差が小さくても
+## 手前/奥がはっきり決まるよう、rpsをそのまま丸めるより細かく刻む。
+const DRAW_ORDER_SCALE := 8
+
+## z_indexの上限。RPSの上限(CustomPartCatalog.RPS_CAP=40)×分解能ぶん。衝撃波や
+## 予告・狙い(Battle.OVERLAY_Z)はこれより上へ退避させてあるので、回転数を上げても
+## コマがそれらを覆い隠さない。
+const DRAW_ORDER_Z_MAX := 320
+
 ## 60fpsを前提にしたときの、マークが正しく見える上限(rps)。
 ## ナイキスト(30rps)の手前に置く。ちょうど30だと前後どちらに回っているか
 ## 定まらず、超えると逆回転に見える。
@@ -78,7 +87,15 @@ func _ready() -> void:
 func reset_spin() -> void:
 	rps = stats.rps
 	defeated = false
+	z_index = draw_order_z(rps)
 	queue_redraw()
+
+
+## 回転数が高いコマほど手前(z_indexが大)に描く。重なったとき勢いのある方が上に
+## 見えるように。0以上に保つのは、床(Arena、z=0・不透明)より後ろへ落とさないため。
+## 純粋関数なのでヘッドレスでテストできる。
+static func draw_order_z(spin: float) -> int:
+	return clampi(int(round(spin * DRAW_ORDER_SCALE)), 0, DRAW_ORDER_Z_MAX)
 
 
 ## 見た目を回す速さ。実速度そのままではナイキストを超えて逆回転に見えるので、
@@ -103,6 +120,8 @@ func aura_ratio() -> float:
 func _process(delta: float) -> void:
 	_time += delta
 	rotation += visual_rps() * TAU * delta
+	# 回転数は再生中に変わるので、重なり順も毎フレーム追従させる。
+	z_index = draw_order_z(rps)
 	queue_redraw()
 
 
