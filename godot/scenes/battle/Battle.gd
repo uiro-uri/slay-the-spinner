@@ -59,6 +59,13 @@ const BAR_ROW_H := 60.0
 ## 決着後、余韻を見せてから次へ進むまでの秒数。
 @export_range(0.0, 5.0, 0.1) var finish_delay: float = 2.0
 
+## 乱戦で倒れた敵が、rpsを尽かしてから消え始めるまでの待機(秒)。この間は暗転した姿で残る。
+## 敵が1体だけの戦闘では消さない(決着後に暗くして残す既存挙動のまま)。
+@export_range(0.0, 5.0, 0.05) var enemy_fadeout_delay: float = EnemyFadeout.DEFAULT_DELAY
+
+## 乱戦で倒れた敵のフェードにかける秒数。
+@export_range(0.0, 5.0, 0.05) var enemy_fadeout_duration: float = EnemyFadeout.DEFAULT_DURATION
+
 ## 敵の初期状態。M3でマップから選ばれた敵に差し替える。
 ## 敵が出現する円周の、中心からの距離。壁とコマの半径より内側に取ること。
 @export_range(1.0, 5.0, 0.1) var enemy_spawn_radius: float = 4.0
@@ -131,6 +138,10 @@ var _enemy_bars: Array[ProgressBar] = []
 
 ## 各敵の出現内容。発射前に決めて予告しておく。
 var _enemy_plans: Array[EnemySpawn.Plan] = []
+
+## 各敵が rps を尽かした時刻(秒)。未撃破は -1.0。再生開始時に軌跡から確定する。
+## 乱戦(敵が複数体)のときだけ、この時刻を基準に時間差で敵をフェードアウトさせる。
+var _enemy_defeat_times: Array[float] = []
 
 ## 再生中の結果と、その中での現在時刻。
 var _result: BattleResult = null
@@ -399,6 +410,17 @@ func play(result: BattleResult) -> void:
 	_player.reset_spin()
 	for enemy in _enemies:
 		enemy.reset_spin()
+
+	# 各敵が rps を尽かす時刻を軌跡から確定しておく。乱戦のフェードアウトはこの時刻を基準にする。
+	# reset_spin() は defeated を戻すが不透明度は戻さないので、ここで明示的に元へ戻す。
+	_enemy_defeat_times.clear()
+	for i in _enemies.size():
+		_enemy_defeat_times.append(
+			EnemyFadeout.defeat_time(_result.enemy_tracks[i], lose_threshold, _result.time_step)
+		)
+		_enemies[i].modulate.a = 1.0
+		_enemy_bars[i].modulate.a = 1.0
+
 	_apply_frame(0.0)
 	set_physics_process(true)
 
@@ -429,8 +451,23 @@ func _apply_frame(t: float) -> void:
 		_enemies[i].position = e.position
 		_enemies[i].velocity = e.velocity
 		_enemies[i].rps = e.rps
+		# 乱戦のときだけ、倒れた敵を「暗くしてから時間差で消す」。1体戦闘は現状維持。
+		if _enemies.size() > 1:
+			_apply_fadeout(i, t)
 
 	_update_bars()
+
+
+## 乱戦で倒れた敵 i を、rpsを尽かした瞬間に暗転させ、一定時間後に不透明度を落として消す。
+## ディスクとHPバーを揃えて消し、生き残った敵と混ざらないようにする。
+func _apply_fadeout(i: int, t: float) -> void:
+	var td := _enemy_defeat_times[i]
+	if td >= 0.0 and t >= td:
+		# rps=0 の姿(暗転・尾なし)を見せてから消す。以後の_finishのdefeated設定とも矛盾しない。
+		_enemies[i].defeated = true
+	var a := EnemyFadeout.alpha_at(t, td, enemy_fadeout_delay, enemy_fadeout_duration)
+	_enemies[i].modulate.a = a
+	_enemy_bars[i].modulate.a = a
 
 
 ## 衝突は計算中に起きているので、再生時刻が追いついたところで衝撃波を出す。
