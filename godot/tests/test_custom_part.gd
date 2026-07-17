@@ -122,6 +122,34 @@ func _test_description_matches_effect(check: Callable) -> void:
 				"パーツ%d: 説明に上限が出ている (%s)" % [part.id, text]
 			)
 
+		# 倍率だけでは挙動が読めないので、実際の効果を一言添えている。
+		# キーが素のまま残っている＝訳がない、を弾く。現行パーツは全部
+		# 倍率≠1なので必ず注記が付く。
+		check.call(
+			not text.contains("PART_NOTE"),
+			"パーツ%d(%s): 効果注記の訳がある (%s)" % [part.id, part.title_key, text]
+		)
+		check.call(
+			text.contains("\n"),
+			"パーツ%d(%s): 倍率行に続けて効果注記が付く (%s)" % [part.id, part.title_key, text]
+		)
+
+	# 半径は上げると衝突被害が減る一方で自然減衰が上がる二面性がある。
+	# 倍率だけでは伝わらないので、その挙動が注記に出ていることをピンする。
+	var radius_part := CustomPart.make(
+		0, "T", CustomPart.Rarity.COMMON, CustomPart.Stat.RADIUS, 1.35
+	)
+	var radius_note := radius_part.describe().to_lower()
+	check.call(
+		radius_note.contains("decay"),
+		"パーツ: 半径UPの注記が自然減衰に触れる (%s)" % radius_note
+	)
+	TranslationServer.set_locale("ja")
+	check.call(
+		radius_part.describe().contains("減衰"),
+		"パーツ: 半径UPの注記(ja)が減衰に触れる (%s)" % radius_part.describe()
+	)
+
 
 func _test_selection(check: Callable) -> void:
 	var rng := RandomNumberGenerator.new()
