@@ -15,8 +15,8 @@ var player_stats: SpinnerStats = null
 ## 分岐マップと現在位置。現在位置はMapTreeが持つ。
 var map_tree: MapTree = null
 
-## 次の戦闘の相手。マップでノードを選んだときに決まる。
-var pending_enemy: EnemyData = null
+## 次の戦闘の相手。マップでノードを選んだときに決まる。複数体の乱戦もありうる。
+var pending_enemies: Array[EnemyData] = []
 
 ## このランで獲得したカスタムパーツのID。M4で導入。
 var acquired_part_ids: Array[int] = []
@@ -28,7 +28,7 @@ var continues_left: int = MAX_CONTINUES
 func reset_run() -> void:
 	player_stats = default_player_stats()
 	map_tree = MapTree.generate()
-	pending_enemy = null
+	pending_enemies = []
 	acquired_part_ids = []
 	continues_left = MAX_CONTINUES
 
