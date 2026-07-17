@@ -26,6 +26,20 @@ func _init(wall_point: Vector2, wall_normal: Vector2) -> void:
 	normal = wall_normal.normalized()
 
 
+## コマ全体がアリーナに収まる位置へ寄せる。
+##
+## 発射地点をマウス位置のまま使っていたので、アリーナの外どこからでも
+## 発射できた。外から内向きに撃つと、壁の反射判定(内向きに進んでいる間は
+## 当たらない)をすり抜けて助走をつけられてしまう。見た目にもコマが枠の外に浮く。
+static func clamp_inside(bounds: Rect2, pos: Vector2, radius: float) -> Vector2:
+	var lo := bounds.position + Vector2.ONE * radius
+	var hi := bounds.end - Vector2.ONE * radius
+	# コマがアリーナより大きいと範囲が反転する。その時は中心に置く。
+	if lo.x > hi.x or lo.y > hi.y:
+		return bounds.get_center()
+	return Vector2(clampf(pos.x, lo.x, hi.x), clampf(pos.y, lo.y, hi.y))
+
+
 ## 矩形アリーナの4辺を内向き法線付きで返す。
 static func from_rect(bounds: Rect2) -> Array[ArenaWall]:
 	var center := bounds.get_center()
