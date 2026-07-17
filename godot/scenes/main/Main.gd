@@ -25,6 +25,7 @@ func goto_title() -> void:
 
 
 func _on_start_requested() -> void:
+	AudioManager.play("ui_confirm")
 	GameState.reset_run()
 	goto_map()
 
@@ -40,6 +41,7 @@ func _on_map_node_chosen(coord: Vector2i) -> void:
 	if not GameState.map_tree.advance_to(coord):
 		push_error("Main: 進めないノードが選ばれた: %s" % coord)
 		return
+	AudioManager.play("ui_confirm")
 	var step := GameState.map_tree.current_step()
 	GameState.pending_enemies = EnemyRoster.pick_group_for_step(step)
 	GameState.pending_field = FieldRoster.pick_for_step(step)
@@ -79,6 +81,7 @@ func goto_gameover() -> void:
 ## コンティニュー: 回数を1消費し、同じ相手・同じマップ位置で戦闘へ戻る。
 ## pending_enemiesもcurrent_coordも触らないので、同じグループでそのまま再挑戦になる。
 func _on_continue_requested() -> void:
+	AudioManager.play("ui_confirm")
 	if not GameState.use_continue():
 		# 残0で来たら念のためタイトルへ（通常はボタンが隠れて起きない）。
 		goto_title()
@@ -87,6 +90,7 @@ func _on_continue_requested() -> void:
 
 
 func _on_give_up_requested() -> void:
+	AudioManager.play("ui_back")
 	goto_title()
 
 
@@ -97,6 +101,7 @@ func goto_reward() -> void:
 
 
 func _on_part_chosen(part: CustomPart) -> void:
+	AudioManager.play("ui_select")
 	part.apply_to(GameState.player_stats)
 	GameState.acquired_part_ids.append(part.id)
 	goto_map()

@@ -18,6 +18,7 @@ func _on_start_pressed() -> void:
 
 
 func _on_language_pressed() -> void:
+	AudioManager.play("ui_click")
 	# 切り替え先の言語をボタンに表示する（英語表示中は「日本語」と出る）ため、
 	# LANGUAGE_TOGGLEの訳語は意図的に反転させてある。
 	var next_locale := "en" if TranslationServer.get_locale().begins_with("ja") else "ja"

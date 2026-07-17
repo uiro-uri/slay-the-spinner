@@ -355,6 +355,7 @@ func _begin(player_pos: Vector2, player_vel: Vector2) -> void:
 	for telegraph in _telegraphs:
 		telegraph.hide_plan()
 	_message.text = ""
+	AudioManager.play("launch")
 	start(player_pos, player_vel)
 
 
@@ -497,10 +498,12 @@ func _update_bars() -> void:
 
 
 ## 衝撃波をアリーナのユニット系に生やす。自分で消えるので後始末は要らない。
+## 衝撃波と同じ瞬間に衝突音を鳴らす(絵と音を同じ再生時刻に結びつける)。
 func _spawn_spark(at: Vector2) -> void:
 	var spark := COLLISION_SPARK.instantiate()
 	spark.position = at
 	$ArenaRoot.add_child(spark)
+	AudioManager.play("impact")
 
 
 ## 壁用の控えめな衝撃波。同じCollisionSparkを、小さく・短く・壁色に寄せた値で使い回す。
@@ -513,6 +516,7 @@ func _spawn_wall_spark(at: Vector2) -> void:
 	# 終わりは同じ色のまま透明へ抜ける。コマ同士のような色相の変化はさせない。
 	spark.end_color = Color(wall_spark_color.r, wall_spark_color.g, wall_spark_color.b, 0.0)
 	$ArenaRoot.add_child(spark)
+	AudioManager.play("wall")
 
 
 ## 再生が結果の終わりまで来た。勝敗はもう決まっているので、見せるだけ。
@@ -532,14 +536,17 @@ func _finish() -> void:
 	match _result.outcome:
 		BattleResult.Outcome.DRAW:
 			_message.text = "BATTLE_DRAW"
-			# 引き分けは全員力尽きている。
+			# 引き分けは全員力尽きている。勝ちではないので負け音を鳴らす。
 			_player.defeated = true
 			for enemy in _enemies:
 				enemy.defeated = true
+			AudioManager.play("lose")
 		BattleResult.Outcome.PLAYER_WIN:
 			_message.text = "BATTLE_WIN"
+			AudioManager.play("win")
 		_:
 			_message.text = "BATTLE_LOSE"
+			AudioManager.play("lose")
 
 	await get_tree().create_timer(finish_delay).timeout
 	finished.emit(player_won)

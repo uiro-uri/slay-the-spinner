@@ -187,11 +187,13 @@ settings are written and strips them.
 
 ### Sound effects (SE)
 
-For SE, see `docs/se.md`. No audio infrastructure exists yet — no `AudioStreamPlayer`, no audio
-bus, no assets. It's deliberately **not** implemented yet: there are no sourced/licensed sound
-assets, and the physics is still being tuned by feel, so there's nothing stable to bind SE
-triggers to. When it lands, collision SE should hook the same recorded impacts that playback uses
-for sparks (`BattleResult.impacts`), not the physics step.
+For SE, see `docs/se.md`. `AudioManager` (`autoloads/AudioManager.gd`) plays keyed one-shots
+through an `SE` bus with a voice pool; callers only ever say `AudioManager.play("<key>")` and the
+key→file table (`SOUNDS`) is the one place paths live. Every call is swallowed if the key or
+stream is missing, so it's safe in the browser, native, and headless tests alike. Collision SE
+hooks the playback spark points (`Battle._spawn_spark` / `_spawn_wall_spark`), which fire on the
+recorded impacts — not the physics step. Assets are Kenney CC0 under `assets/audio/se/`; the
+launch and win/lose picks are placeholders to be chosen by ear (swap the `SOUNDS` entry).
 
 ## Shipping
 
