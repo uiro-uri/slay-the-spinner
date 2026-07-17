@@ -43,8 +43,12 @@ stage of `scripts/verify.sh` has a substantive pass criterion:
 | 2. tests | exit code **and** the completed-test count — a GDScript runtime error aborts a function without failing the run |
 | 3. headless run | no errors from `--quit-after` |
 | 4. export ×3 | exit code **and** a `.pck` size floor |
-| 5. native render | launch the Linux build, capture via `--write-movie`, assert non-blank |
+| 5. native render | launch the **exported** Linux binary, capture via `--write-movie`, assert non-blank |
 | 6. web render | Chromium on the served export: no JS errors, canvas non-blank |
+
+Stage 5 deliberately runs `build/linux/slay-the-spinner.x86_64`, not `--path godot`. Running the
+project only proves the editor can play it from source; a broken binary/pck pairing would sail
+through. What ships is the export, so the export is what gets launched.
 
 Stages 5 and 6 leave `build/verify/native.png` and `build/verify/web.png` to eyeball.
 
@@ -104,6 +108,13 @@ Comments and commit messages are in Japanese. Keep the existing language of what
 
 **Do not put explanatory comments in `godot/project.godot`** — Godot regenerates the file whenever
 settings are written and strips them.
+
+## Shipping
+
+See `docs/steam.md`. GodotSteam is deliberately **not** vendored yet — without an App ID it cannot
+initialize, so it would be an untestable 50MB+ binary in the repo. When it goes in, every Steam call
+must sit behind an availability guard: the same codebase ships to browser (no Steam API), native
+without Steam, and native under Steam.
 
 ## Conventions
 
