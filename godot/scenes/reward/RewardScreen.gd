@@ -56,8 +56,12 @@ func _build_card(part: CustomPart) -> Control:
 		tag.text = "PART_RARITY_RARE"
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(tag)
+		# 金の地は明るいまま残る唯一の面なので、暗色文字＋明色縁取りで読ませる
+		# (戦闘メッセージの明色文字＋暗色縁取りと対の関係)。文字色はCustomPartが出所。
 		for label in [title, text, tag]:
 			label.add_theme_color_override("font_color", CustomPart.RARE_TEXT_COLOR)
+			label.add_theme_color_override("font_outline_color", Palette.TEXT_PRIMARY)
+			label.add_theme_constant_override("outline_size", 3)
 
 	var button := Button.new()
 	button.text = "REWARD_SELECT"

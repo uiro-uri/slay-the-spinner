@@ -19,7 +19,7 @@ const DISC: PackedScene = preload("res://scenes/battle/Disc.tscn")
 
 ## 敵ディスクの色。プレイヤー(青)と対になる赤。元はBattle.tscnのEnemyDiscに
 ## 直接置いていたが、敵を動的に生成するようになったのでここへ移した。
-const ENEMY_COLOR := Color(0.906, 0.298, 0.235)
+const ENEMY_COLOR := Palette.ENEMY
 
 ## ステージの傾斜の強さ。
 @export_range(0.0, 20.0, 0.1) var stage_strength: float = 4.9
@@ -73,7 +73,7 @@ const ENEMY_COLOR := Color(0.906, 0.298, 0.235)
 @export_range(0.05, 3.0, 0.05) var wall_spark_duration: float = 0.3
 
 ## 出た瞬間の色。壁色を薄くしたもの。消える時は同色のままalpha 0へ抜ける。
-@export var wall_spark_color: Color = Color("d98cd9", 0.5)
+@export var wall_spark_color: Color = Color(Palette.NEON_MAGENTA, 0.5)
 
 @export_group("調整用")
 
@@ -124,7 +124,17 @@ func _ready() -> void:
 	set_physics_process(false)
 	_launcher.launched.connect(_on_launched)
 	_launcher.aim_moved.connect(_on_aim_moved)
+
+	# メッセージは暗紫の床の上に出るので、明色文字＋暗色縁取りで読ませる。
+	# 下を明るいネオンのコマやスパークが通っても縁取りで浮く。色はPaletteが唯一の出所。
 	_message.text = "BATTLE_DRAG_TO_SHOOT"
+	_message.add_theme_color_override("font_color", Palette.TEXT_PRIMARY)
+	_message.add_theme_color_override("font_outline_color", Palette.TEXT_OUTLINE)
+	_message.add_theme_constant_override("outline_size", Palette.MESSAGE_OUTLINE_SIZE)
+
+	# プレイヤーのコマ色もPalette由来にする(tscnのリテラルではなくここが権威)。
+	_player.body_color = Palette.PLAYER
+
 	_apply_run_state()
 
 	# 敵の出現をここで決めてしまい、発射前から予告しておく。毎回変わるが、
