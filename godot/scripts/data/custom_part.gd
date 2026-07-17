@@ -32,6 +32,18 @@ const _STAT_KEYS := {
 	Stat.RPS: "PART_EFFECT_RPS",
 }
 
+## 倍率だけでは何が起きるか読み取れないので、実際の挙動を一言添える。
+## キーは PART_NOTE_<ステータス>_<UP|DOWN> の形。上げ下げで効果が逆になる
+## ステータス（特に半径は衝突減衰と自然減衰が逆に動く）ので方向で分ける。
+## 未使用の方向でも、後でデバフ札を足したとき訳抜けが素で見えるよう両方置く。
+const _STAT_NAMES := {
+	Stat.MASS: "MASS",
+	Stat.RADIUS: "RADIUS",
+	Stat.FRICTION: "FRICTION",
+	Stat.RESTITUTION: "RESTITUTION",
+	Stat.RPS: "RPS",
+}
+
 @export var id: int = 0
 
 ## パーツ名の翻訳キー。
@@ -86,11 +98,23 @@ static func rare_stylebox() -> StyleBoxFlat:
 
 
 ## 実際の値から説明文を組み立てる。手書きしないので数値と食い違わない。
+## 1行目は「質量 ×1.6（上限 8）」の生の倍率、2行目に実際の挙動を一言。
 func describe() -> String:
 	var text: String = tr(_STAT_KEYS[stat]).format([_trim(multiplier)])
 	if cap > 0.0:
 		text += tr("PART_EFFECT_CAP").format([_trim(cap)])
+	var note := _effect_note()
+	if note != "":
+		text += "\n" + note
 	return text
+
+
+## 倍率の向きから実際の挙動の説明を引く。倍率が1（効果なし）なら空。
+func _effect_note() -> String:
+	if is_equal_approx(multiplier, 1.0):
+		return ""
+	var direction := "UP" if multiplier > 1.0 else "DOWN"
+	return tr("PART_NOTE_%s_%s" % [_STAT_NAMES[stat], direction])
 
 
 ## 1.20 -> "1.2", 2.00 -> "2" のように余分な0を落とす。
