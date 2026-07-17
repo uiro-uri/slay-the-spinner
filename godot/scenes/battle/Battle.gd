@@ -21,6 +21,20 @@ const DISC: PackedScene = preload("res://scenes/battle/Disc.tscn")
 ## 直接置いていたが、敵を動的に生成するようになったのでここへ移した。
 const ENEMY_COLOR := Palette.ENEMY
 
+## 横画面(設計)でのArenaRoot/UIの既定値。縦画面から横へ戻すときここへ復元する。
+const LAND_ARENA_POS := Vector2(390.0, 110.0)
+const LAND_ARENA_SCALE := Vector2(50.0, 50.0)
+const LAND_MESSAGE_RECT := Rect2(390.0, 300.0, 500.0, 60.0)
+const LAND_BARS_RECT := Rect2(390.0, 622.0, 500.0, 60.0)
+
+## アリーナの1辺(10ユニット×既定スケール50=500px)。当てはめの基準。
+const ARENA_PX := 500.0
+## アリーナの下に確保するバー帯の設計上の高さ。当てはめで縦にこのぶん余分を取る。
+const BAR_BAND := 90.0
+## バー帯とアリーナの隙間、およびメッセージ/バー行の高さ(px)。
+const BAND_GAP := 12.0
+const BAR_ROW_H := 60.0
+
 ## ステージの傾斜の強さ。
 @export_range(0.0, 20.0, 0.1) var stage_strength: float = 4.9
 
@@ -60,6 +74,14 @@ const ENEMY_COLOR := Palette.ENEMY
 ## GameState.pending_enemiesが空のときだけ使う。
 @export var fallback_enemy_stats: SpinnerStats
 
+@export_group("縦画面(スマホ)")
+
+## 縦画面のとき、コンテンツを画面幅のどれだけまで使うか。横画面では効かない。
+@export_range(0.5, 1.0, 0.01) var portrait_fill: float = 0.9
+
+## 縦画面のときの縦位置。0.5で中央、0.7で中央より下(親指で届きやすい)。横画面では効かない。
+@export_range(0.0, 1.0, 0.05) var portrait_vertical_bias: float = 0.7
+
 @export_group("壁エフェクト")
 
 ## 壁に当たった時の衝撃波。コマ同士(CollisionSpark既定)より小さく・短く・薄くして
@@ -85,6 +107,7 @@ const ENEMY_COLOR := Palette.ENEMY
 @export var auto_start_pos: Vector2 = Vector2(2, 8)
 @export var auto_start_vel: Vector2 = Vector2(6, -6)
 
+@onready var _arena_root: Node2D = $ArenaRoot
 @onready var _arena: Arena = $ArenaRoot/Arena
 @onready var _player: Disc = $ArenaRoot/PlayerDisc
 @onready var _enemy_discs_root: Node2D = $ArenaRoot/EnemyDiscs
@@ -135,6 +158,10 @@ func _ready() -> void:
 	# プレイヤーのコマ色もPalette由来にする(tscnのリテラルではなくここが権威)。
 	_player.body_color = Palette.PLAYER
 
+	# 画面比に合わせてアリーナとUIを置き直す。縦画面のときだけ効く。
+	get_viewport().size_changed.connect(_recompute_layout)
+	_recompute_layout()
+
 	_apply_run_state()
 
 	# 敵の出現をここで決めてしまい、発射前から予告しておく。毎回変わるが、
@@ -156,6 +183,46 @@ func _ready() -> void:
 
 	if auto_start:
 		_begin(auto_start_pos, auto_start_vel)
+
+
+## 画面比に応じてアリーナとUIを置き直す。横画面(設計比16:9)はシーン既定のまま。
+## 縦画面のときだけ、アリーナ(正方)を幅fillの領域へアスペクト維持で拡大し、
+## 中央やや下へ寄せる。バーはアリーナ直下、メッセージはアリーナ中央あたりへ。
+##
+## 発射入力はLaunchControllerが get_local_mouse_position() で読むので、ArenaRootの
+## scale/positionを変えてもドラッグ発射は自動で整合する(clampもarena単位で不変)。
+func _recompute_layout() -> void:
+	var visible := get_viewport().get_visible_rect().size
+	if not ScreenLayout.is_portrait(visible):
+		_arena_root.position = LAND_ARENA_POS
+		_arena_root.scale = LAND_ARENA_SCALE
+		_set_rect(_message, LAND_MESSAGE_RECT)
+		_set_rect(_bars, LAND_BARS_RECT)
+		return
+
+	# アリーナ＋下のバー帯を、幅fillの領域へアスペクト維持で収める。
+	var content := Vector2(ARENA_PX, ARENA_PX + BAR_BAND)
+	var target := Vector2(visible.x * portrait_fill, visible.y)
+	var k := ScreenLayout.fit_scale(content, target)
+	var arena_px := ARENA_PX * k
+	var block := Vector2(arena_px, content.y * k)
+	var top_left := ScreenLayout.placement(block, visible, 0.5, portrait_vertical_bias)
+
+	_arena_root.scale = LAND_ARENA_SCALE * k
+	_arena_root.position = top_left
+
+	# メッセージはアリーナ幅に合わせ、アリーナの縦中央あたりへ。
+	_set_rect(_message, Rect2(top_left.x, top_left.y + arena_px * 0.4, arena_px, BAR_ROW_H))
+	# バーはアリーナ直下、幅いっぱい。
+	_set_rect(_bars, Rect2(top_left.x, top_left.y + arena_px + BAND_GAP, arena_px, BAR_ROW_H))
+
+
+## CanvasLayer上のControl(アンカー0=左上)の矩形を offset で設定する。
+func _set_rect(control: Control, rect: Rect2) -> void:
+	control.offset_left = rect.position.x
+	control.offset_top = rect.position.y
+	control.offset_right = rect.position.x + rect.size.x
+	control.offset_bottom = rect.position.y + rect.size.y
 
 
 ## この戦闘に出す敵の一覧。ランの状態があればそれを、なければ(Battle.tscn単体で
