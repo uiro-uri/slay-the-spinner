@@ -21,6 +21,11 @@ const DISC: PackedScene = preload("res://scenes/battle/Disc.tscn")
 ## 直接置いていたが、敵を動的に生成するようになったのでここへ移した。
 const ENEMY_COLOR := Palette.ENEMY
 
+## 衝撃波・予告・狙いを置くレイヤー。コマは回転数に応じてz_indexを上げる
+## (Disc.draw_order_z、上限Disc.DRAW_ORDER_Z_MAX)ので、そのままだと勢いのあるコマが
+## これらを覆い隠してしまう。コマの上限より確実に手前へ出して従来の重なり順を保つ。
+const OVERLAY_Z := 1000
+
 ## 横画面(設計)でのArenaRoot/UIの既定値。縦画面から横へ戻すときここへ復元する。
 const LAND_ARENA_POS := Vector2(390.0, 110.0)
 const LAND_ARENA_SCALE := Vector2(50.0, 50.0)
@@ -203,6 +208,11 @@ func _ready() -> void:
 
 	# プレイヤーのコマ色もPalette由来にする(tscnのリテラルではなくここが権威)。
 	_player.body_color = Palette.PLAYER
+
+	# コマは回転数でz_indexを上げる(勢いのある方が手前)。予告・狙い・衝撃波は
+	# それより手前へ退避させ、コマに覆い隠されないようにする(従来の重なり順を保つ)。
+	_enemy_telegraphs_root.z_index = OVERLAY_Z
+	_launcher.z_index = OVERLAY_Z
 
 	# 画面比に合わせてアリーナとUIを置き直す。縦画面のときだけ効く。
 	get_viewport().size_changed.connect(_recompute_layout)
@@ -573,6 +583,7 @@ func _update_bars() -> void:
 func _spawn_spark(at: Vector2) -> void:
 	var spark := COLLISION_SPARK.instantiate()
 	spark.position = at
+	spark.z_index = OVERLAY_Z
 	$ArenaRoot.add_child(spark)
 
 
@@ -580,6 +591,7 @@ func _spawn_spark(at: Vector2) -> void:
 func _spawn_wall_spark(at: Vector2) -> void:
 	var spark := COLLISION_SPARK.instantiate()
 	spark.position = at
+	spark.z_index = OVERLAY_Z
 	spark.max_radius = wall_spark_radius
 	spark.duration = wall_spark_duration
 	spark.start_color = wall_spark_color
