@@ -2,3 +2,7 @@ keys,en,ja
 TITLE_GAME_NAME,Slay the Spinner,Slay the Spinner
 TITLE_START,Game Start,ゲームスタート
 LANGUAGE_TOGGLE,日本語,English
+BATTLE_DRAG_TO_SHOOT,Drag to Shoot!,引っ張って発射!
+BATTLE_WIN,You Win!,勝利!
+BATTLE_LOSE,You Lose...,敗北...
+BATTLE_DRAW,Draw,引き分け
