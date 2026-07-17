@@ -290,6 +290,50 @@ else
   kill "$server_pid" 2>/dev/null; wait "$server_pid" 2>/dev/null
 fi
 
+# --- 7. SP画面遷移描画 ------------------------------------------------------
+# 段階6のsp.pngは起動直後のTitleしか写らない。Map(ステージ選択)とBattle(戦闘)の
+# 縦画面レイアウトを人が目視できるよう、実ブラウザでTitle→Map→Battleと遷移させて
+# 各画面を撮る。canvas単色でない・起動・エラー0は自動判定するが、拡大や中央やや下の
+# 当否は残す sp_map.png / sp_battle.png を人が見て確かめる(既存の「画像を見る」方針)。
+stage "7. SP画面遷移描画 (Map/Battle, 縦${SP_W}x${SP_H})"
+
+if [[ $QUICK -eq 1 ]]; then
+  skip "--quick のため省略"
+elif ! ensure_venv; then
+  skip "venvを用意できない ($VENV_DIR)"
+elif [[ ! -f "$BUILD_DIR/web/index.html" ]]; then
+  skip "Web書き出しがない"
+elif ss -tln 2>/dev/null | grep -q ":${WEB_PORT} "; then
+  fail "ポート ${WEB_PORT} が既に使用中。古いサーバーを止めるか WEB_PORT を変えてください"
+else
+  mkdir -p "$ARTIFACT_DIR"
+  (cd "$BUILD_DIR/web" && exec python3 -m http.server "$WEB_PORT" >/dev/null 2>&1) &
+  server_pid=$!
+  sleep 2
+  out="$("$VENV_DIR/bin/python" "$REPO_ROOT/scripts/verify_sp_screens.py" \
+    "$WEB_PORT" "$ARTIFACT_DIR/sp_map.png" "$ARTIFACT_DIR/sp_battle.png" "$SP_W" "$SP_H")"
+  sp_rc=$?
+  kill "$server_pid" 2>/dev/null; wait "$server_pid" 2>/dev/null
+
+  if [[ $sp_rc -ne 0 || -z "$out" ]]; then
+    fail "SP画面遷移の確認を実行できなかった"
+  else
+    IFS='|' read -r n_err map_colors battle_colors booted <<<"$(tail -1 <<<"$out")"
+    [[ "$booted" == "1" ]] && ok "ブラウザでGodotが起動 (SP遷移)" || fail "ブラウザでGodotが起動しなかった (SP遷移)"
+    [[ "$n_err" == "0" ]] && ok "JS/Godotエラーなし (SP遷移)" || fail "SP遷移中にエラー ${n_err}件"
+    if [[ ! "$map_colors" =~ ^[0-9]+$ ]] || [[ "$map_colors" -lt 3 ]]; then
+      fail "Map(縦)が実質ブランク (色数 $map_colors)"
+    else
+      ok "Map(縦)描画OK (色数 $map_colors) -> build/verify/sp_map.png"
+    fi
+    if [[ ! "$battle_colors" =~ ^[0-9]+$ ]] || [[ "$battle_colors" -lt 3 ]]; then
+      fail "Battle(縦)が実質ブランク (色数 $battle_colors)"
+    else
+      ok "Battle(縦)描画OK (色数 $battle_colors) -> build/verify/sp_battle.png"
+    fi
+  fi
+fi
+
 # --- 結果 -------------------------------------------------------------------
 stage "結果"
 if [[ ${#SKIPS[@]} -gt 0 ]]; then
