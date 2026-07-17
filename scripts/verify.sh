@@ -51,9 +51,16 @@ skip()  { printf '  %sSKIP%s %s\n' "$c_yel" "$c_rst" "$1"; SKIPS+=("$1"); }
 detail(){ sed 's/^/         /' <<<"$1"; }
 
 # --- 0. preflight -----------------------------------------------------------
-# エディタをsudoで起動すると.godotがroot所有になり、以後インポートが権限
-# エラーで失敗して.importがvalid=falseに書き換わる。結果、フォントや翻訳が
-# 抜けた壊れたビルドが黙って出来上がる。実際に踏んだので最初に検出する。
+# Godotが書くファイルがroot所有になっていないか。
+#
+# WSLでは、Windows側から \\wsl.localhost\ 経由で書いたファイルがroot所有に
+# なる(9Pファイルサーバーがroot権限で動くため。sudoは関係ない)。つまり
+# Windows版のGodotでこのプロジェクトを開くだけで、project.godotも.godot/も
+# root所有になる。sudoでエディタを起動した場合も同じ結果になる。
+#
+# こうなるとインポートが権限エラーで失敗して.importがvalid=falseに書き換わり、
+# フォントや翻訳が抜けた壊れたビルドが黙って出来上がる。gitがブランチを
+# 切り替えられなくもなる。実際に両方踏んだので最初に検出する。
 stage "0. preflight"
 
 if [[ ! -x "$GODOT_BIN" ]]; then
@@ -63,17 +70,20 @@ if [[ ! -x "$GODOT_BIN" ]]; then
 fi
 ok "godot: $("$GODOT_BIN" --version 2>/dev/null | head -1)"
 
-if [[ -e "$GODOT_PROJECT/.godot" ]]; then
-  owner="$(stat -c '%U' "$GODOT_PROJECT/.godot")"
-  if [[ "$owner" != "$(id -un)" ]]; then
-    fail ".godot が ${owner} 所有 (sudoでエディタを起動した?). 'sudo rm -rf godot/.godot' で消せば再生成される"
-  elif [[ ! -w "$GODOT_PROJECT/.godot" ]]; then
-    fail ".godot に書き込めない"
-  else
-    ok ".godot は自分の所有で書き込み可"
-  fi
+# .godot/ だけでなくGodotが書き換えるファイル全部を見る。project.godotが
+# root所有だとgitがブランチを切り替えられなくなる(実際に踏んだ)。
+# .godot/の中はshader_cacheのように深い階層だけがrootになることもある。
+foreign="$(find "$GODOT_PROJECT" ! -user "$(id -un)" -print 2>/dev/null | head -20)"
+if [[ -n "$foreign" ]]; then
+  count="$(find "$GODOT_PROJECT" ! -user "$(id -un)" -print 2>/dev/null | wc -l)"
+  fail "godot/ に自分の所有でないものが ${count} 件ある。Windows版のGodotで開くか、sudoで起動すると起きる(下記参照)"
+  detail "$(head -5 <<<"$foreign" | sed "s|$REPO_ROOT/||")"
+  detail "直し方: 親ディレクトリが自分の所有なら sudo なしで消せる。"
+  detail "  rm -rf godot/.godot && git checkout -- godot/project.godot"
+  detail "再発を防ぐには、Windows版ではなくWSL側のGodotで開くこと(WSLgで窓が出る):"
+  detail "  ~/bin/godot4 --path godot -e"
 else
-  ok ".godot なし (これから生成される)"
+  ok "godot/ は全部自分の所有"
 fi
 
 # --- 1. import --------------------------------------------------------------

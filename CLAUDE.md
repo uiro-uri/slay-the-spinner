@@ -26,10 +26,24 @@ scripts/verify.sh           # everything (see below)
 scripts/verify.sh --quick   # skip the rendering checks
 ```
 
-**Do not launch the Godot editor with sudo.** It makes `godot/.godot/` root-owned, after which
-imports fail with permission errors, `.import` files get rewritten to `valid=false`, and you
-silently get builds with the font and translations missing. Recover with
-`sudo rm -rf godot/.godot`. `verify.sh` stage 0 detects this.
+**On WSL, do not open this project with the Windows build of Godot.** Anything Windows writes into
+the WSL filesystem through `\\wsl.localhost\` lands as **root-owned — no sudo involved**, because
+WSL's 9P file server runs as root. Merely opening the project in Windows Godot makes
+`project.godot` and `.godot/` root-owned, and then: imports fail on permissions, `.import` files
+get rewritten to `valid=false`, and you silently get builds with the font and translations missing
+(exit 0 throughout); git can no longer switch branches because it cannot overwrite
+`project.godot`; Godot spews `shader_gles3.cpp` errors because it cannot write its shader cache.
+Launching the editor with sudo causes the same thing.
+
+Use the WSL-side Godot instead — WSLg puts the window on the Windows desktop, and it skips 9P so
+imports are faster:
+
+```bash
+~/bin/godot4 --path godot -e
+```
+
+Recovering needs no sudo as long as the parent directory is yours: `rm -rf godot/.godot` and
+`git checkout -- godot/project.godot`. `verify.sh` stage 0 detects the state.
 
 ### Verification
 
@@ -38,7 +52,7 @@ stage of `scripts/verify.sh` has a substantive pass criterion:
 
 | Stage | Criterion |
 |---|---|
-| 0. preflight | `godot/.godot` is ours and writable (the sudo accident above) |
+| 0. preflight | everything under `godot/` is owned by us (the root-ownership trap above) |
 | 1. import ×2 | the **2nd** run has no errors (the 1st legitimately errors: `.translation` files and the font aren't generated yet at boot) |
 | 2. tests | exit code **and** the completed-test count — a GDScript runtime error aborts a function without failing the run |
 | 3. headless run | no errors from `--quit-after` |

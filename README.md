@@ -13,11 +13,35 @@
   同じバイナリがエディタ（GUI）とヘッドレスCLI（`godot --headless ...`）を
   兼ねています。
 - `godot/project.godot` をGodotエディタで開いてください。
-- **エディタをsudo（root）で起動しないでください。** インポートキャッシュ
-  `godot/.godot/` がroot所有になり、以後は通常ユーザーでのインポート・
-  書き出しが権限エラーで失敗するようになります（`.import`が`valid=false`に
-  書き換わり、フォントや翻訳が焼き込まれない壊れたビルドができます）。
-  そうなった場合は `sudo rm -rf godot/.godot` で消せば再生成されます。
+
+### WSLで作業する場合、Windows版のGodotで開かないでください
+
+Windows側から `\\wsl.localhost\` 経由でWSLのファイルを書くと、**sudoを使わなくても
+root所有になります**（WSLの9Pファイルサーバーがroot権限で動くため）。つまり
+**Windows版のGodotでこのプロジェクトを開くだけ**で `project.godot` も `.godot/` も
+root所有になり、こうなります:
+
+- インポートが権限エラーで失敗し、`.import` が `valid=false` に書き換わる。
+  **フォントや翻訳が焼き込まれない壊れたビルドが黙ってできる**（exit 0で通る）。
+- **gitがブランチを切り替えられなくなる**（`project.godot` を上書きできず `Aborting`）。
+- Godotがシェーダキャッシュを書けず `shader_gles3.cpp` のエラーを吐き続ける。
+
+WSL側のGodotで開けばこれは起きません。WSLgでWindowsの画面に窓が出ます:
+
+```bash
+~/bin/godot4 --path godot -e     # インストール場所は適宜
+```
+
+9Pを経由しないのでインポートも速くなります。
+
+すでにroot所有になってしまった場合、**親ディレクトリが自分の所有ならsudoは要りません**:
+
+```bash
+rm -rf godot/.godot                      # 消えなければ sudo rm -rf godot/.godot
+git checkout -- godot/project.godot
+```
+
+`verify.sh` の段階0がこの状態を検出します。
 
 ## ディレクトリ構成
 
@@ -76,7 +100,7 @@ scripts/verify.sh --quick   # 描画確認を省略して速く回す
 
 | 段階 | 判定 |
 |---|---|
-| 0. preflight | `.godot`が自分の所有か（sudoでエディタを起動する事故の検出） |
+| 0. preflight | `godot/`配下が全部自分の所有か（Windows版Godotで開く事故の検出） |
 | 1. import ×2 | **2回目**にエラーが無いこと（1回目は生成物が未作成で正当にエラーになる） |
 | 2. テスト | 終了コード＋完走したテスト数 |
 | 3. ヘッドレス起動 | `ERROR`が出ないこと |
