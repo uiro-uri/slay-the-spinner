@@ -11,9 +11,6 @@ const BATTLE_SCENE: PackedScene = preload("res://scenes/battle/Battle.tscn")
 const REWARD_SCENE: PackedScene = preload("res://scenes/reward/RewardScreen.tscn")
 const GAMEOVER_SCENE: PackedScene = preload("res://scenes/gameover/GameOver.tscn")
 
-## 報酬として見せる枚数。
-const REWARD_CHOICES := 3
-
 @onready var _screen_holder: Node = $ScreenHolder
 
 
@@ -37,12 +34,14 @@ func goto_map() -> void:
 	map.setup(GameState.map_tree)
 
 
-## 進む先を選んだら、その段にふさわしい敵を決めて戦闘へ。
+## 進む先を選んだら、その段にふさわしい敵グループ(1〜3体)と土俵を決めて戦闘へ。
 func _on_map_node_chosen(coord: Vector2i) -> void:
 	if not GameState.map_tree.advance_to(coord):
 		push_error("Main: 進めないノードが選ばれた: %s" % coord)
 		return
-	GameState.pending_enemy = EnemyRoster.pick_for_step(GameState.map_tree.current_step())
+	var step := GameState.map_tree.current_step()
+	GameState.pending_enemies = EnemyRoster.pick_group_for_step(step)
+	GameState.pending_field = FieldRoster.pick_for_step(step)
 	goto_battle()
 
 
@@ -71,7 +70,7 @@ func goto_gameover() -> void:
 
 
 ## コンティニュー: 回数を1消費し、同じ相手・同じマップ位置で戦闘へ戻る。
-## pending_enemyもcurrent_coordも触らないので、そのまま再挑戦になる。
+## pending_enemiesもcurrent_coordも触らないので、同じグループでそのまま再挑戦になる。
 func _on_continue_requested() -> void:
 	if not GameState.use_continue():
 		# 残0で来たら念のためタイトルへ（通常はボタンが隠れて起きない）。
@@ -87,7 +86,7 @@ func _on_give_up_requested() -> void:
 func goto_reward() -> void:
 	var reward := _swap_screen(REWARD_SCENE)
 	reward.part_chosen.connect(_on_part_chosen)
-	reward.setup(CustomPartCatalog.pick_choices(REWARD_CHOICES))
+	reward.setup(CustomPartCatalog.pick_choices(CustomPartCatalog.REWARD_CHOICES))
 
 
 func _on_part_chosen(part: CustomPart) -> void:

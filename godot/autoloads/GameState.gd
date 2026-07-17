@@ -15,8 +15,11 @@ var player_stats: SpinnerStats = null
 ## 分岐マップと現在位置。現在位置はMapTreeが持つ。
 var map_tree: MapTree = null
 
-## 次の戦闘の相手。マップでノードを選んだときに決まる。
-var pending_enemy: EnemyData = null
+## 次の戦闘の相手。マップでノードを選んだときに決まる。複数体の乱戦もありうる。
+var pending_enemies: Array[EnemyData] = []
+
+## 次の戦闘の土俵。相手と同じくマップでノードを選んだときに決まる。
+var pending_field: FieldData = null
 
 ## このランで獲得したカスタムパーツのID。M4で導入。
 var acquired_part_ids: Array[int] = []
@@ -28,7 +31,8 @@ var continues_left: int = MAX_CONTINUES
 func reset_run() -> void:
 	player_stats = default_player_stats()
 	map_tree = MapTree.generate()
-	pending_enemy = null
+	pending_enemies = []
+	pending_field = null
 	acquired_part_ids = []
 	continues_left = MAX_CONTINUES
 
@@ -41,13 +45,6 @@ func use_continue() -> bool:
 	return true
 
 
-## プロトタイプの Object(1.5, 0.5, 0.98, 1.0, 15.0) に相当する初期性能。
-## 手触りで調整する前提の値。
+## 初期性能の実体はSpinnerStats.default_player()にある(シミュレーションと共有)。
 static func default_player_stats() -> SpinnerStats:
-	var stats := SpinnerStats.new()
-	stats.mass = 1.5
-	stats.radius = 0.5
-	stats.friction = 0.98
-	stats.restitution = 1.0
-	stats.rps = 15.0
-	return stats
+	return SpinnerStats.default_player()

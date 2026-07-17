@@ -14,6 +14,12 @@ MAP_CHOOSE_NEXT,Choose your path,進む先を選べ
 MAP_ACQUIRED_HEADING,Your Build,取得済みアップグレード
 MAP_NO_UPGRADES,No parts yet,まだありません
 PART_COUNT_SUFFIX," ×{0}"," ×{0}"
+FIELD_CLASSIC,Classic Dish,標準のすり鉢
+FIELD_BOWL,Deep Bowl,深いすり鉢
+FIELD_PLATE,Shallow Plate,浅い皿
+FIELD_ARENA,Octagon Arena,八角形の闘技場
+FIELD_ROUND,Round Dish,円形の土俵
+FIELD_PILLARS,Pillar Field,柱の土俵
 ENEMY_1_1,Chipling,コマ小僧
 ENEMY_1_2,Needlet,ニードレット
 ENEMY_2_1,Rambull,ランブル
