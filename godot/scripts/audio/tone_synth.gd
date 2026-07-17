@@ -63,8 +63,10 @@ func _ensure_playing() -> void:
 		_phase = 0.0
 		_freq = _target_freq
 		play()
-	# get_stream_playback() は play() 後でないと取れない。ヘッドレスでは null もありうる。
-	if _playback == null:
+	# get_stream_playback() は playing 中でないと取れない。ヘッドレス(ダミー音声
+	# ドライバ)では play() しても playing にならないので、ここで問い合わせず null の
+	# まま進む(_process 側で波形を書かないだけ。エンジンのエラー出力も避けられる)。
+	if playing and _playback == null:
 		_playback = get_stream_playback()
 	set_process(true)
 
