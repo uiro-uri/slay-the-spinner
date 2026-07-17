@@ -12,7 +12,7 @@ var _failures: Array[String] = []
 var _completed: Array[String] = []
 
 const EXPECTED_TESTS: Array[String] = [
-	"translations", "gamestate", "font", "physics", "map", "mapglow", "enemies", "parts", "acquired", "spawn", "battle", "fields", "disc", "wobble", "playtest"
+	"translations", "gamestate", "font", "physics", "map", "mapglow", "enemies", "parts", "acquired", "spawn", "battle", "fields", "disc", "wobble", "contrast", "playtest"
 ]
 
 
@@ -70,6 +70,9 @@ func _init() -> void:
 
 	print("== wobble ==")
 	_test_wobble()
+
+	print("== contrast ==")
+	_test_contrast()
 
 	print("== playtest ==")
 	_test_playtest()
@@ -240,6 +243,12 @@ func _test_wobble() -> void:
 	var suite = load("res://tests/test_telegraph_wobble.gd").new()
 	suite.run(_check)
 	_done("wobble")
+
+
+func _test_contrast() -> void:
+	var suite = load("res://tests/test_contrast.gd").new()
+	suite.run(_check)
+	_done("contrast")
 
 
 func _test_playtest() -> void:

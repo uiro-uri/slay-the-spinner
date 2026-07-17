@@ -21,7 +21,7 @@ enum Stat { MASS, RADIUS, FRICTION, RESTITUTION, RPS }
 
 ## レアカードの見た目。報酬選択とマップの取得済み一覧で同じ強調を使うため、
 ## パーツ側に置いて共有する。地が明るい金色なので文字は暗くしないと読めない。
-const RARE_TEXT_COLOR := Color(0.15, 0.12, 0.0)
+const RARE_TEXT_COLOR := Palette.TEXT_ON_LIGHT
 
 ## 効果の説明に使う翻訳キー。倍率と上限を埋め込む。
 const _STAT_KEYS := {
@@ -73,7 +73,7 @@ func apply_to(stats: SpinnerStats) -> void:
 ## レアカードの金色スタイルボックス。報酬選択とマップ一覧で共有する。
 static func rare_stylebox() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("ffcc00")
+	style.bg_color = Palette.GOLD_CARD
 	style.corner_radius_top_left = 8
 	style.corner_radius_top_right = 8
 	style.corner_radius_bottom_left = 8

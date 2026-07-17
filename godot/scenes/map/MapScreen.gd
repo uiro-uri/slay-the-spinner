@@ -19,22 +19,22 @@ const CELL := Vector2(64.0, 62.0)
 const ORIGIN := Vector2(640.0, 80.0)
 const NODE_RADIUS := 18.0
 
-const COLOR_LINE := Color(0.45, 0.45, 0.5, 0.55)
-const COLOR_VISITED := Color(0.6, 0.75, 0.9)
-const COLOR_CURRENT := Color(0.4, 0.7, 1.0)
-const COLOR_NEXT := Color(0.45, 0.85, 0.5)
-const COLOR_PLAIN := Color(0.75, 0.75, 0.78)
+const COLOR_LINE := Palette.MAP_LINE
+const COLOR_VISITED := Palette.MAP_VISITED
+const COLOR_CURRENT := Palette.MAP_CURRENT
+const COLOR_NEXT := Palette.MAP_NEXT
+const COLOR_PLAIN := Palette.MAP_PLAIN
 
 ## 現在地から進める先へ伸びる線の強調色。COLOR_NEXTに寄せた明るい緑。
-const COLOR_PATH := Color(0.55, 1.0, 0.6, 0.9)
+const COLOR_PATH := Palette.MAP_PATH
 ## 選択可能マスの背後に敷く淡いグロー。低アルファで、明滅で濃さが動く。
-const COLOR_GLOW := Color(0.5, 1.0, 0.55)
+const COLOR_GLOW := Palette.MAP_GLOW
 ## マウスオーバー中のマスの輪郭。
-const COLOR_HOVER_RING := Color(0.85, 1.0, 0.88)
+const COLOR_HOVER_RING := Palette.MAP_HOVER_RING
 ## 現在地を示す常時リング。
-const COLOR_CURRENT_RING := Color(0.6, 0.85, 1.0, 0.9)
+const COLOR_CURRENT_RING := Palette.MAP_CURRENT_RING
 ## ノードの縁取り。
-const COLOR_OUTLINE := Color(0.2, 0.2, 0.25, 0.8)
+const COLOR_OUTLINE := Palette.MAP_OUTLINE
 
 ## グロー環が明滅で広がる最大の追加半径(px)。
 const GLOW_EXTRA := 7.0

@@ -48,7 +48,7 @@ const TAIL_WIDTH_RATIO := 0.28
 @export_range(1.0, 60.0, 1.0) var tail_full_rps: float = 40.0
 
 @export var stats: SpinnerStats
-@export var body_color: Color = Color("3498db")
+@export var body_color: Color = Palette.PLAYER
 
 var velocity: Vector2 = Vector2.ZERO
 
@@ -99,11 +99,11 @@ func _draw() -> void:
 
 	if defeated:
 		# 力尽きたコマは回っていない。マークだけ残して尾は出さない。
-		_draw_mark(radius, Color(1, 1, 1, 0.25))
+		_draw_mark(radius, Color(Palette.SPIN_MARK, 0.25))
 		return
 
 	_draw_tail(radius)
-	_draw_mark(radius, Color(1, 1, 1, 0.95))
+	_draw_mark(radius, Color(Palette.SPIN_MARK, 0.95))
 
 
 ## マークの後ろへ伸びる弧。長いほど速い。一周すればブレたリングになる。
@@ -122,7 +122,7 @@ func _draw_tail(radius: float) -> void:
 		var t := float(i) / steps
 		var a0 := start - span * t
 		var a1 := start - span * (t + 1.0 / steps)
-		var color := Color(1, 1, 1, lerpf(0.55, 0.0, t))
+		var color := Color(Palette.SPIN_MARK, lerpf(0.55, 0.0, t))
 		draw_arc(Vector2.ZERO, radius - width * 0.5, a1, a0, 4, color, width)
 
 
