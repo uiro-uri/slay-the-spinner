@@ -110,10 +110,14 @@ func _ready() -> void:
 
 	# 敵の出現をここで決めてしまい、発射前から予告しておく。毎回変わるが、
 	# プレイヤーは狙う前に相手の軌道を読める。
+	#
+	# 予告は確定値の周りで揺らして見せる(読み切らせないため)が、揺れるのは
+	# 見た目だけ。撃つときは必ず_enemy_planの確定値を使う。
 	_enemy_plan = _plan_enemy_spawn()
 	_enemy.position = _enemy_plan.position
 	_enemy.velocity = Vector2.ZERO
 	_telegraph.show_plan(_enemy_plan.position, _enemy_plan.velocity)
+	set_process(true)
 
 	_player.reset_spin()
 	_enemy.reset_spin()
@@ -122,6 +126,15 @@ func _ready() -> void:
 
 	if auto_start:
 		_begin(auto_start_pos, auto_start_vel)
+
+
+## 発射前は、コマを予告の三角形の頂点に合わせて漂わせる。
+## 揺らすのは見た目だけなので、ここで_enemy_planは書き換えない。
+func _process(_delta: float) -> void:
+	if _result != null:
+		set_process(false)
+		return
+	_enemy.position = _telegraph.display_position()
 
 
 func _plan_enemy_spawn() -> EnemySpawn.Plan:
@@ -150,11 +163,11 @@ func _apply_run_state() -> void:
 func _on_aim_moved(origin: Vector2) -> void:
 	if _result != null:
 		return
-	_player.position = origin
+	_player.position = ArenaWall.clamp_inside(Arena.BOUNDS, origin, _player.stats.radius)
 
 
 func _on_launched(pos: Vector2, velocity: Vector2) -> void:
-	_begin(pos, velocity)
+	_begin(ArenaWall.clamp_inside(Arena.BOUNDS, pos, _player.stats.radius), velocity)
 
 
 ## 発射して戦闘へ入る。auto_startもここを通す。
