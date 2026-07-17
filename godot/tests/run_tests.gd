@@ -12,7 +12,7 @@ var _failures: Array[String] = []
 var _completed: Array[String] = []
 
 const EXPECTED_TESTS: Array[String] = [
-	"translations", "gamestate", "font", "physics", "map", "mapglow", "enemies", "parts", "spawn", "battle", "fields", "disc", "wobble", "playtest"
+	"translations", "gamestate", "font", "physics", "map", "mapglow", "enemies", "parts", "acquired", "spawn", "battle", "fields", "disc", "wobble", "playtest"
 ]
 
 
@@ -52,6 +52,9 @@ func _init() -> void:
 
 	print("== parts ==")
 	_test_parts()
+
+	print("== acquired ==")
+	_test_acquired()
 
 	print("== spawn ==")
 	_test_spawn()
@@ -201,6 +204,12 @@ func _test_parts() -> void:
 	var suite = load("res://tests/test_custom_part.gd").new()
 	suite.run(_check)
 	_done("parts")
+
+
+func _test_acquired() -> void:
+	var suite = load("res://tests/test_acquired_upgrades.gd").new()
+	suite.run(_check)
+	_done("acquired")
 
 
 func _test_spawn() -> void:
