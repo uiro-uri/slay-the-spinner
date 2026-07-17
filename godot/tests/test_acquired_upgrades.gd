@@ -33,17 +33,17 @@ func _test_single(check: Callable) -> void:
 
 
 func _test_aggregates_and_order(check: Callable) -> void:
-	# id1 を2回、id2 を1回。初出順は 1 -> 2。
-	var ids: Array[int] = [1, 1, 2]
+	# id2 を2回、id5 を1回。初出順は 2 -> 5。
+	var ids: Array[int] = [2, 2, 5]
 	var result := CustomPartCatalog.aggregate_acquired(ids)
 	check.call(result.size() == 2, "集約: 重複は畳んで2エントリ (%d)" % result.size())
 	if result.size() == 2:
 		var first: CustomPart = result[0]["part"]
 		var second: CustomPart = result[1]["part"]
-		check.call(first.id == 1, "集約: 初出順で id1 が先頭 (%d)" % first.id)
-		check.call(result[0]["count"] == 2, "集約: id1 のcountは2 (%d)" % result[0]["count"])
-		check.call(second.id == 2, "集約: id2 が2番目 (%d)" % second.id)
-		check.call(result[1]["count"] == 1, "集約: id2 のcountは1 (%d)" % result[1]["count"])
+		check.call(first.id == 2, "集約: 初出順で id2 が先頭 (%d)" % first.id)
+		check.call(result[0]["count"] == 2, "集約: id2 のcountは2 (%d)" % result[0]["count"])
+		check.call(second.id == 5, "集約: id5 が2番目 (%d)" % second.id)
+		check.call(result[1]["count"] == 1, "集約: id5 のcountは1 (%d)" % result[1]["count"])
 
 
 func _test_rare_count(check: Callable) -> void:
