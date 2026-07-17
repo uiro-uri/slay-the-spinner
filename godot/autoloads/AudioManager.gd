@@ -92,6 +92,11 @@ func _build_pool() -> void:
 	for _i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
 		player.bus = SE_BUS
+		# ワンショットSEは SAMPLE 再生にする。Web版の既定は STREAM(Godot内部ミキサで
+		# 実時間Vorbisデコード)だが、これが Web でデコード結果を返さず無音になる。
+		# SAMPLE は素材をWeb Audioのバッファへ焼いてから鳴らす、SFX向けの確実な経路
+		# (Godot 4.3+ がまさにこの用途に用意したもの)。ネイティブでも問題なく鳴る。
+		player.playback_type = AudioServer.PLAYBACK_TYPE_SAMPLE
 		add_child(player)
 		_pool.append(player)
 
