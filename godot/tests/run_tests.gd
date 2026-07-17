@@ -11,7 +11,7 @@ extends SceneTree
 var _failures: Array[String] = []
 var _completed: Array[String] = []
 
-const EXPECTED_TESTS: Array[String] = ["translations", "gamestate"]
+const EXPECTED_TESTS: Array[String] = ["translations", "gamestate", "font"]
 
 
 func _check(condition: bool, message: String) -> void:
@@ -32,6 +32,9 @@ func _init() -> void:
 
 	print("== gamestate ==")
 	_test_gamestate_autoload()
+
+	print("== font ==")
+	_test_font_covers_japanese()
 
 	for test_name in EXPECTED_TESTS:
 		if not test_name in _completed:
@@ -83,3 +86,29 @@ func _test_gamestate_autoload() -> void:
 	game_state.free()
 
 	_done("gamestate")
+
+
+func _test_font_covers_japanese() -> void:
+	# Godot標準フォントはCJKグリフを持たず、日本語が豆腐(□)になる。
+	# 実ブラウザで見るまで気付けなかったので、ここで機械的に検出する。
+	# pckサイズでは捕まらない: フォントファイルはall_resourcesで同梱される
+	# ため、custom_fontの指定を外しても容量は変わらない。
+	var font_path: String = ProjectSettings.get_setting("gui/theme/custom_font", "")
+	_check(font_path != "", "既定フォントがproject.godotに設定されている")
+	if font_path == "":
+		_done("font")
+		return
+
+	var font := load(font_path) as Font
+	_check(font != null, "既定フォントを読み込める (%s)" % font_path)
+	if font == null:
+		_done("font")
+		return
+
+	for sample in ["あ", "日", "ア", "A"]:
+		_check(
+			font.has_char(sample.unicode_at(0)),
+			"既定フォントが '%s' のグリフを持つ" % sample
+		)
+
+	_done("font")

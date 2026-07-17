@@ -44,7 +44,30 @@ godot --headless --path godot --export-release "Web"
 # -> http://localhost:8099/index.html
 ```
 
-ヘッドレステスト:
+## 検証
+
+```bash
+scripts/verify.sh           # 全段階
+scripts/verify.sh --quick   # 描画確認を省略して速く回す
+```
+
+終了コードは当てにならない（フォントと翻訳が抜けた壊れたビルドがexit 0で
+通った実績がある）ため、各段階に実質的な判定基準を置いている:
+
+| 段階 | 判定 |
+|---|---|
+| 0. preflight | `.godot`が自分の所有か（sudoでエディタを起動する事故の検出） |
+| 1. import ×2 | **2回目**にエラーが無いこと（1回目は生成物が未作成で正当にエラーになる） |
+| 2. テスト | 終了コード＋完走したテスト数 |
+| 3. ヘッドレス起動 | `ERROR`が出ないこと |
+| 4. 書き出し ×3 | 終了コード＋pckサイズ下限 |
+| 5. ネイティブ描画 | 実際に起動して描画したフレームが単色でないこと |
+| 6. Web描画 | ブラウザでGodotが起動し、JSエラー0、canvasが単色でないこと |
+
+5と6は `build/verify/native.png` と `build/verify/web.png` を残すので、
+見た目は画像を見て確認する。
+
+個別に回す場合:
 
 ```bash
 godot --headless --path godot --script res://tests/run_tests.gd
