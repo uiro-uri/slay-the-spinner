@@ -83,6 +83,9 @@ const BAR_ROW_H := 60.0
 ## ズームを元へ引き戻すのにかける秒数。finish_delayの内数。
 @export_range(0.05, 3.0, 0.1) var finish_zoom_release: float = 0.5
 
+## 勝敗ジングルを鳴らすまでの遅延(秒)。決着の瞬間に重ねず、少し余韻を置いてから鳴らす。
+@export_range(0.0, 3.0, 0.05) var result_se_delay: float = 0.8
+
 ## 力尽きたコマが、消え始めるまでの待機(秒)。この間は最後の姿のまま残す。
 ## 乱戦の戦闘中に倒れた敵にも、決着で力尽きたコマ(敗者・引き分けの両者)にも同じ尺を使う。
 @export_range(0.0, 5.0, 0.05) var enemy_fadeout_delay: float = EnemyFadeout.DEFAULT_DELAY
@@ -603,13 +606,13 @@ func _finish() -> void:
 	match _result.outcome:
 		BattleResult.Outcome.DRAW:
 			_message.text = "BATTLE_DRAW"
-			AudioManager.play("lose")
+			_play_result_se("lose")
 		BattleResult.Outcome.PLAYER_WIN:
 			_message.text = "BATTLE_WIN"
-			AudioManager.play("win")
+			_play_result_se("win")
 		_:
 			_message.text = "BATTLE_LOSE"
-			AudioManager.play("lose")
+			_play_result_se("lose")
 
 	# 力尽きたコマは即グレーアウトさせず、最後の姿を一拍見せてからフェードで消す。
 	var fade := _start_defeated_fadeout()
@@ -619,6 +622,18 @@ func _finish() -> void:
 	if fade != null and fade.is_valid() and fade.is_running():
 		await fade.finished
 	finished.emit(player_won)
+
+
+## 勝敗ジングルを result_se_delay 秒だけ遅らせて鳴らす。ここで戦闘の流れ(_finish)は
+## 待たせない。Battle が先に解放されても AudioManager は autoload で生きており、
+## SceneTreeTimer もツリー側に残るので、ノード解放の影響を受けず安全に鳴らせる。
+func _play_result_se(key: String) -> void:
+	if result_se_delay <= 0.0:
+		AudioManager.play(key)
+		return
+	get_tree().create_timer(result_se_delay).timeout.connect(
+		func() -> void: AudioManager.play(key)
+	)
 
 
 ## 決着で力尽きたコマ(敗者、引き分けなら両者)を、最後の姿のまま enemy_fadeout_delay 待って
