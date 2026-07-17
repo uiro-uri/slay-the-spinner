@@ -169,12 +169,21 @@ func _draw_tail(radius: float) -> void:
 		draw_arc(Vector2.ZERO, radius - width * 0.5, a1, a0, 4, color, width)
 
 
-## 回転そのものを示す非対称なマーク。1つしかないので周期は360°。
+## 回転そのものを示す非対称なマーク。回転方向へ先細るくさび(彗星の頭)。
+## 1つしかないので周期は360°。頭が前方(反時計回り)、太い尻に尾が続く。
 func _draw_mark(radius: float, color: Color) -> void:
 	var width := radius * TAIL_WIDTH_RATIO
-	draw_arc(
-		Vector2.ZERO, radius - width * 0.5,
-		-MARK_ARC * 0.5, MARK_ARC * 0.5, 8, color, width
-	)
-	# 縁から少し飛び出させて、円周のどこにいるかを掴みやすくする。
-	draw_circle(Vector2.RIGHT * radius, width * 0.42, color)
+	var a_tail := -MARK_ARC * 0.5   # 後方。太い背。尾の根元と噛み合う
+	var a_tip := MARK_ARC * 0.5     # 前方。一点に収束する頭
+	var steps := 8
+	var poly := PackedVector2Array()
+	# 外周は常に縁(radius)と面一。飛び出させない。尻→頭
+	for i in steps + 1:
+		var t := float(i) / steps
+		poly.push_back(Vector2.RIGHT.rotated(lerpf(a_tail, a_tip, t)) * radius)
+	# 内周を頭→尻へ戻す。厚みを頭の0から尻のwidthへ広げる。
+	for i in steps + 1:
+		var t := float(steps - i) / steps
+		var thick := width * (1.0 - t)
+		poly.push_back(Vector2.RIGHT.rotated(lerpf(a_tail, a_tip, t)) * (radius - thick))
+	draw_colored_polygon(poly, color)
