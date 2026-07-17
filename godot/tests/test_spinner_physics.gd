@@ -7,19 +7,30 @@ extends RefCounted
 ## 指数的に増幅するため、軌跡の厳密一致は原理的に不可能。追いかけると
 ## 永遠に緑にならないテストになる。
 ##
-## 代わりに、数値をどう調整しても成り立つべき「物理法則の不変量」を検証する:
-## 運動量保存、弾性衝突での運動エネルギー保存、力の向き、など。
-## これらは移植ミスを確実に捕まえる一方、手触りの調整では壊れない。
+## 代わりに、各関数が「意図した式になっているか」を、向きや単調性といった
+## 数値に依らない性質で検証する。手触りの調整で定数を変えても壊れない。
+##
+## 保存則について: これはゲームのための嘘物理で、系全体では保存しない。
+## spin_kickは回転をエネルギー源に運動を足すし、壁のrestitutionも1とは限らない。
+## 下の運動量保存・エネルギー保存のテストは elastic_velocities という
+## 「完全弾性衝突の式」単体が正しく書けているかを見ているだけで、ゲームが
+## 満たすべき法則ではない。コマ同士の衝突を非弾性にしたくなったら、
+## 迷わずこのテストの方を書き換えること。
 
 const EPS := 1e-4
 
+const SHAPE_NAMES := {
+	SpinnerPhysics.StageShape.DISH: "すり鉢",
+	SpinnerPhysics.StageShape.CONE: "円錐",
+}
+
 
 func run(check: Callable) -> void:
-	_test_spring(check)
+	_test_stage_slope(check)
 	_test_friction(check)
 	_test_collision_detection(check)
-	_test_elastic_conserves_momentum(check)
-	_test_elastic_conserves_energy(check)
+	_test_elastic_formula_momentum(check)
+	_test_elastic_formula_energy(check)
 	_test_elastic_separates(check)
 	_test_spin_drain(check)
 	_test_spin_kick(check)
@@ -27,20 +38,43 @@ func run(check: Callable) -> void:
 	_test_natural_decay(check)
 
 
-func _test_spring(check: Callable) -> void:
+func _test_stage_slope(check: Callable) -> void:
 	var center := Vector2(5, 5)
-	# 中心にいれば力は働かない
+
+	# どちらの形でも、中心では傾斜がないので力は働かない
+	for shape in SHAPE_NAMES:
+		check.call(
+			SpinnerPhysics.stage_slope_accel(center, center, 4.9, shape).length() < EPS,
+			"ステージ傾斜(%s): 中心では力ゼロ" % SHAPE_NAMES[shape]
+		)
+
+	# どちらの形でも、常に中心へ滑り落ちる向き
+	for shape in SHAPE_NAMES:
+		var accel := SpinnerPhysics.stage_slope_accel(Vector2(8, 5), center, 4.9, shape)
+		check.call(
+			accel.x < 0.0 and absf(accel.y) < EPS,
+			"ステージ傾斜(%s): 中心へ向かう" % SHAPE_NAMES[shape]
+		)
+
+	# すり鉢は外側ほど傾斜が急: 2倍離れれば2倍の力
+	var dish_near := SpinnerPhysics.stage_slope_accel(
+		Vector2(6, 5), center, 4.9, SpinnerPhysics.StageShape.DISH).length()
+	var dish_far := SpinnerPhysics.stage_slope_accel(
+		Vector2(7, 5), center, 4.9, SpinnerPhysics.StageShape.DISH).length()
 	check.call(
-		SpinnerPhysics.spring_accel(center, center, 4.9).length() < EPS,
-		"バネ: 中心では力ゼロ"
+		absf(dish_far - dish_near * 2.0) < EPS,
+		"すり鉢: 変位に比例して強くなる (%.3f vs %.3f)" % [dish_far, dish_near * 2.0]
 	)
-	# 常に中心を向く
-	var accel := SpinnerPhysics.spring_accel(Vector2(8, 5), center, 4.9)
-	check.call(accel.x < 0.0 and absf(accel.y) < EPS, "バネ: 中心を向く")
-	# 変位に比例する（2倍離れれば2倍の力）
-	var near := SpinnerPhysics.spring_accel(Vector2(6, 5), center, 4.9).length()
-	var far := SpinnerPhysics.spring_accel(Vector2(7, 5), center, 4.9).length()
-	check.call(absf(far - near * 2.0) < EPS, "バネ: 変位に比例 (%.3f vs %.3f)" % [far, near * 2.0])
+
+	# 円錐は一定傾斜: どこでも同じ大きさ
+	var cone_near := SpinnerPhysics.stage_slope_accel(
+		Vector2(6, 5), center, 4.9, SpinnerPhysics.StageShape.CONE).length()
+	var cone_far := SpinnerPhysics.stage_slope_accel(
+		Vector2(9, 5), center, 4.9, SpinnerPhysics.StageShape.CONE).length()
+	check.call(
+		absf(cone_far - cone_near) < EPS and absf(cone_near - 4.9) < EPS,
+		"円錐: 距離によらず一定 (%.3f vs %.3f)" % [cone_near, cone_far]
+	)
 
 
 func _test_friction(check: Callable) -> void:
@@ -72,7 +106,10 @@ func _test_collision_detection(check: Callable) -> void:
 	)
 
 
-func _test_elastic_conserves_momentum(check: Callable) -> void:
+## 以下2つは「完全弾性衝突の式が正しく書けているか」の確認であって、
+## ゲームが保存則を満たすべきという主張ではない。質量比の取り違えなど
+## よくある移植ミスがここで確実に落ちるので、式の検算として置いている。
+func _test_elastic_formula_momentum(check: Callable) -> void:
 	var pos_a := Vector2(0, 0); var vel_a := Vector2(2, 1); var mass_a := 1.5
 	var pos_b := Vector2(0.9, 0.2); var vel_b := Vector2(-1, 0.5); var mass_b := 3.0
 
@@ -82,11 +119,11 @@ func _test_elastic_conserves_momentum(check: Callable) -> void:
 
 	check.call(
 		(after - before).length() < EPS,
-		"弾性衝突: 運動量が保存する (%s -> %s)" % [before, after]
+		"弾性衝突の式: 運動量が保存する (%s -> %s)" % [before, after]
 	)
 
 
-func _test_elastic_conserves_energy(check: Callable) -> void:
+func _test_elastic_formula_energy(check: Callable) -> void:
 	var pos_a := Vector2(0, 0); var vel_a := Vector2(2, 1); var mass_a := 1.5
 	var pos_b := Vector2(0.9, 0.2); var vel_b := Vector2(-1, 0.5); var mass_b := 3.0
 
@@ -96,7 +133,7 @@ func _test_elastic_conserves_energy(check: Callable) -> void:
 
 	check.call(
 		absf(after - before) < 1e-3,
-		"弾性衝突: 運動エネルギーが保存する (%.5f -> %.5f)" % [before, after]
+		"弾性衝突の式: 運動エネルギーが保存する (%.5f -> %.5f)" % [before, after]
 	)
 
 
