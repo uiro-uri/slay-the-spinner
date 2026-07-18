@@ -472,6 +472,8 @@ func build_request(player_pos: Vector2, player_vel: Vector2) -> BattleRequest:
 	request.natural_damping = natural_damping
 	request.wall_damping = wall_damping
 	request.lose_threshold = lose_threshold
+	# 取得済みのゴースト札から無敵時間を決める。単体調整時は取得0で0秒になり従来どおり。
+	request.ghost_duration = CustomPartCatalog.total_ghost_seconds(GameState.acquired_part_ids)
 	return request
 
 

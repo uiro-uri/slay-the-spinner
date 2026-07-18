@@ -19,6 +19,11 @@ enum Rarity { COMMON, RARE }
 
 enum Stat { MASS, RADIUS, FRICTION, RESTITUTION, RPS }
 
+## 効果の種類。既存の札は全部「ステータスに定数を掛ける」(STAT_MULTIPLIER)だが、
+## ゴーストは開始直後の一定時間だけ敵との衝突を無効化する時間効果で、SpinnerStats
+## のどの値にも乗らない。倍率モデルに無理やり畳まず種類で分ける。
+enum EffectKind { STAT_MULTIPLIER, GHOST }
+
 ## レアカードの見た目。報酬選択とマップの取得済み一覧で同じ強調を使うため、
 ## パーツ側に置いて共有する。地が明るい金色なので文字は暗くしないと読めない。
 const RARE_TEXT_COLOR := Palette.TEXT_ON_LIGHT
@@ -51,7 +56,10 @@ const _STAT_NAMES := {
 
 @export var rarity: Rarity = Rarity.COMMON
 
-## どのステータスに掛けるか。
+## 効果の種類。既定はステータス倍率。
+@export var effect_kind: EffectKind = EffectKind.STAT_MULTIPLIER
+
+## どのステータスに掛けるか。effect_kindがSTAT_MULTIPLIERのときだけ意味を持つ。
 @export var stat: Stat = Stat.MASS
 
 ## 掛ける倍率。1未満なら下げる効果。
@@ -59,6 +67,10 @@ const _STAT_NAMES := {
 
 ## 上限。0以下なら上限なし。
 @export var cap: float = 0.0
+
+## ゴースト1枚あたりの無敵秒数。effect_kindがGHOSTのときだけ意味を持つ。
+## 合計時間(=枚数×これ)はCustomPartCatalog.total_ghost_secondsが出す。
+@export var ghost_seconds: float = 0.0
 
 
 static func make(
@@ -75,7 +87,24 @@ static func make(
 	return part
 
 
+## ゴースト札を作る。ステータスは変えず、開始後seconds_秒だけ敵との衝突を消す。
+static func make_ghost(
+	id_: int, title_key_: String, rarity_: Rarity, seconds_: float
+) -> CustomPart:
+	var part := CustomPart.new()
+	part.id = id_
+	part.title_key = title_key_
+	part.rarity = rarity_
+	part.effect_kind = EffectKind.GHOST
+	part.ghost_seconds = seconds_
+	return part
+
+
 func apply_to(stats: SpinnerStats) -> void:
+	# ゴーストはステータスを一切変えない。効果は戦闘の衝突判定側(BattleRequest.
+	# ghost_duration)で処理する。
+	if effect_kind != EffectKind.STAT_MULTIPLIER:
+		return
 	var value := _read(stats) * multiplier
 	if cap > 0.0:
 		value = minf(value, cap)
@@ -100,6 +129,9 @@ static func rare_stylebox() -> StyleBoxFlat:
 ## 実際の値から説明文を組み立てる。手書きしないので数値と食い違わない。
 ## 1行目は「質量 ×1.6（上限 8）」の生の倍率、2行目に実際の挙動を一言。
 func describe() -> String:
+	# ゴーストは倍率を持たないので、無敵秒数を埋めた専用の説明を返す。
+	if effect_kind == EffectKind.GHOST:
+		return tr("PART_EFFECT_GHOST").format([_trim(ghost_seconds)])
 	var text: String = tr(_STAT_KEYS[stat]).format([_trim(multiplier)])
 	if cap > 0.0:
 		text += tr("PART_EFFECT_CAP").format([_trim(cap)])

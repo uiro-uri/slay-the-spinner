@@ -36,6 +36,11 @@ const MASS_CAP := 8.0
 ## 「RPSの最大値を40にし、ゲージに反映」というコミットで決まった値。
 const RPS_CAP := 40.0
 
+## ゴースト1枚あたりの無敵秒数。基準は開始後2秒間で、複数取得で線形に延長する
+## (2枚=4秒、3枚=6秒…)。無敵時間の知識をここに閉じ込め、画面(Battle)も
+## シミュ(RunSim)も同じ値を参照する。
+const GHOST_SECONDS_PER_STACK := 2.0
+
 
 ## 報酬は全部プラスにする。マイナスのパーツは置かない。
 ##
@@ -66,6 +71,10 @@ static func all() -> Array[CustomPart]:
 			CustomPart.Stat.RESTITUTION, 1.1, RESTITUTION_CAP),
 		CustomPart.make(7, "PART_SPIN_ENGINE", CustomPart.Rarity.RARE,
 			CustomPart.Stat.RPS, 1.25, RPS_CAP),
+		# ゴースト: 開始後GHOST_SECONDS_PER_STACK秒だけ敵との衝突を無効化する。
+		# ステータスは変えず、重ねて取るほど無敵時間が伸びる(線形)。
+		CustomPart.make_ghost(8, "PART_GHOST", CustomPart.Rarity.COMMON,
+			GHOST_SECONDS_PER_STACK),
 	]
 
 
@@ -74,6 +83,17 @@ static func by_id(id: int) -> CustomPart:
 		if part.id == id:
 			return part
 	return null
+
+
+## 取得済みIDから、ゴーストの合計無敵秒数(=枚数×1枚あたり秒数)を出す。
+## 戦闘のghost_durationはこれで決まる。ゴースト以外のIDは無視する。
+static func total_ghost_seconds(ids: Array[int]) -> float:
+	var total := 0.0
+	for id in ids:
+		var part := by_id(id)
+		if part != null and part.effect_kind == CustomPart.EffectKind.GHOST:
+			total += part.ghost_seconds
+	return total
 
 
 ## 取得済みIDの配列を初出順に集約する。{"part": CustomPart, "count": int} の配列を返す。

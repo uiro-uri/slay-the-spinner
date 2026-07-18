@@ -15,6 +15,7 @@ func run(check: Callable) -> void:
 	_test_rarity_weighting(check)
 	_test_titles_translated(check)
 	_test_no_debuffs(check)
+	_test_ghost(check)
 
 
 func _stats() -> SpinnerStats:
@@ -106,6 +107,14 @@ func _test_description_matches_effect(check: Callable) -> void:
 		# 説明にキーがそのまま出ていない＝訳がある
 		if text.contains("PART_EFFECT"):
 			check.call(false, "パーツ%d: 効果の訳がない (%s)" % [part.id, text])
+			continue
+
+		# ゴーストは倍率を持たない。説明に無敵秒数が出ていることだけ確かめる。
+		if part.effect_kind == CustomPart.EffectKind.GHOST:
+			check.call(
+				text.contains(CustomPart._trim(part.ghost_seconds)),
+				"パーツ%d(%s): 説明に無敵秒数が出ている (%s)" % [part.id, part.title_key, text]
+			)
 			continue
 
 		# 説明に書かれた倍率が、実際に適用される倍率と一致すること
@@ -254,4 +263,53 @@ func _test_no_debuffs(check: Callable) -> void:
 	check.call(
 		CustomPartCatalog.RESTITUTION_CAP <= 1.0,
 		"反発の上限が1.0以下 (%.2f)。超えると壁で加速して発散する" % CustomPartCatalog.RESTITUTION_CAP
+	)
+
+
+## ゴースト札。ステータスは変えず、無敵時間だけを枚数に比例して伸ばす。
+func _test_ghost(check: Callable) -> void:
+	var ghost := CustomPartCatalog.by_id(8)
+	check.call(ghost != null, "ゴースト: カタログにID8がある")
+	check.call(
+		ghost.effect_kind == CustomPart.EffectKind.GHOST,
+		"ゴースト: 効果種別がGHOST"
+	)
+
+	# apply_toはステータスを一切変えない。
+	var before := _stats()
+	var after := _stats()
+	ghost.apply_to(after)
+	check.call(
+		is_equal_approx(after.mass, before.mass)
+		and is_equal_approx(after.radius, before.radius)
+		and is_equal_approx(after.friction, before.friction)
+		and is_equal_approx(after.restitution, before.restitution)
+		and is_equal_approx(after.rps, before.rps),
+		"ゴースト: apply_toはステータスを変えない"
+	)
+
+	# 説明が訳されていること(キーが素で出ていない)。
+	TranslationServer.set_locale("ja")
+	check.call(
+		ghost.describe() != "PART_EFFECT_GHOST" and not ghost.describe().contains("PART_EFFECT"),
+		"ゴースト: 説明に訳がある (%s)" % ghost.describe()
+	)
+
+	# 合計無敵時間は枚数×1枚あたり秒数。ゴースト以外のIDは無視する。
+	var per := CustomPartCatalog.GHOST_SECONDS_PER_STACK
+	check.call(
+		is_equal_approx(CustomPartCatalog.total_ghost_seconds([] as Array[int]), 0.0),
+		"ゴースト: 未取得なら0秒"
+	)
+	check.call(
+		is_equal_approx(CustomPartCatalog.total_ghost_seconds([8] as Array[int]), per),
+		"ゴースト: 1枚で%.1f秒 (%.2f)" % [per, CustomPartCatalog.total_ghost_seconds([8] as Array[int])]
+	)
+	check.call(
+		is_equal_approx(CustomPartCatalog.total_ghost_seconds([8, 8] as Array[int]), per * 2.0),
+		"ゴースト: 2枚で%.1f秒 (線形延長)" % [per * 2.0]
+	)
+	check.call(
+		is_equal_approx(CustomPartCatalog.total_ghost_seconds([2, 8] as Array[int]), per),
+		"ゴースト: ステータス札(ID2)は無敵時間に数えない"
 	)
