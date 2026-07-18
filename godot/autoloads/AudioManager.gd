@@ -39,7 +39,6 @@ const CLIPS := {
 	"impact": [
 		"res://assets/audio/se/impact/impactMetal_medium_000.ogg",
 		"res://assets/audio/se/impact/impactMetal_heavy_000.ogg",
-		"res://assets/audio/se/impact/impactPlate_heavy_000.ogg",
 	],
 	"wall": [
 		"res://assets/audio/se/wall/impactWood_medium_000.ogg",
