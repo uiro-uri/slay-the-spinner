@@ -57,11 +57,16 @@ AudioManager.start_charge() / update_charge(ratio) / stop_charge()
 | 衝突音(ディスク) | `impact` | `Battle._emit_due_impacts`（`BattleResult.impacts` に同期） |
 | 衝突音(壁) | `wall` | `Battle._emit_due_wall_impacts` |
 | 勝敗音 | `win` / `lose` | `Battle._finish` の `outcome` 分岐 |
+| クリアファンファーレ | `play_clear_fanfare()` | `Main.goto_gameclear`（クリア画面表示時） |
 | 回転音 | `start/update/stop_rotation` | `Battle.play`／`_physics_process`／`_finish`・`_exit_tree` |
 | チャージ音 | `start/update/stop_charge` | `LaunchController` の押下／ドラッグ／離す・無効化 |
 
 衝突音は再生と同じ `BattleResult.impacts`／`wall_impacts` に同期させている（物理ステップ
 ではない）。回転音・チャージ音の音量・ピッチは `AudioLevels` の `const` で調整できる。
+
+クリアファンファーレは `jingles_HIT` を三連打 → 一拍置いて → 完全5度上（ピッチ×1.5）で
+締める短い旋律。`AudioManager.play_clear_fanfare()` が `SceneTreeTimer` で間を取り、`_play_stream`
+の `pitch` 引数でピッチを上げる。間隔・間・ピッチ倍率は `AudioManager` の `CLEAR_*` const で調整できる。
 
 ## サウンドテスト・全体音量
 

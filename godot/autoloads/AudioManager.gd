@@ -138,14 +138,53 @@ func play_path(path: String) -> void:
 
 
 ## プールから次のプレイヤーを取り、stream を鳴らす。play()/play_path() 共通。
-## _ready 前(プール未構築)に呼ばれても落ちないよう保険。
-func _play_stream(stream: AudioStream) -> void:
+## pitch はピッチ倍率(1.0=原音)。ラウンドロビンで使い回すので毎回セットして
+## 前回の値が残らないようにする。_ready 前(プール未構築)に呼ばれても落ちないよう保険。
+func _play_stream(stream: AudioStream, pitch: float = 1.0) -> void:
 	if _pool.is_empty():
 		return
 	var player := _pool[_pool_next]
 	_pool_next = (_pool_next + 1) % _pool.size()
 	player.stream = stream
+	player.pitch_scale = pitch
 	player.play()
+
+
+## --- ゲームクリアのファンファーレ ---
+##
+## jingles_HIT を三連打 → 一拍置いて → 完全5度上(ピッチ×1.5)で締める。
+## 「タタタ・（間）・ター↑」。ゲームクリア画面が出たときに鳴らす。
+## 素材長は約0.28秒なので、間隔はそれに近づけて三打を粒立たせ、締めは一拍空ける。
+
+const CLEAR_NOTE_PATH := "res://assets/audio/se/result/jingles_HIT00.ogg"
+
+## 三連打の間隔(秒)。素材長に近づけて一打ずつ粒立たせる。
+const CLEAR_HIT_INTERVAL := 0.3
+
+## 三打目から締めの5度までの間(秒)。「一拍置いて」の間。三打の間隔より広くとる。
+const CLEAR_REST := 0.6
+
+## 締めのピッチ倍率。完全5度上=3/2。
+const CLEAR_FIFTH_RATIO := 1.5
+
+
+## ゲームクリアのファンファーレを鳴らす。プールを使って重ねる。ツリー外(テスト等)では
+## タイマーが取れないので最初の一打だけ鳴らして戻る(落とさない)。
+func play_clear_fanfare() -> void:
+	var note := load(CLEAR_NOTE_PATH) as AudioStream
+	if note == null:
+		push_warning("AudioManager: クリア音を読み込めない: %s" % CLEAR_NOTE_PATH)
+		return
+	var tree := get_tree()
+	_play_stream(note, 1.0)
+	if tree == null:
+		return
+	await tree.create_timer(CLEAR_HIT_INTERVAL).timeout
+	_play_stream(note, 1.0)
+	await tree.create_timer(CLEAR_HIT_INTERVAL).timeout
+	_play_stream(note, 1.0)
+	await tree.create_timer(CLEAR_REST).timeout
+	_play_stream(note, CLEAR_FIFTH_RATIO)
 
 
 ## --- 全体音量 ---

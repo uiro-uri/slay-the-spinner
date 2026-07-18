@@ -21,6 +21,7 @@ func run(check: Callable) -> void:
 	_test_path_for(check)
 	_test_master_volume(check)
 	_test_play_never_crashes(check)
+	_test_clear_fanfare(check)
 	_test_translations(check)
 
 
@@ -103,6 +104,24 @@ func _test_play_never_crashes(check: Callable) -> void:
 	am.play_path("")
 	am.play_path(SoundCatalog.all()[0]["path"])
 	check.call(true, "未知キー/空パス/プール未構築でも play が落ちない")
+	am.free()
+
+
+func _test_clear_fanfare(check: Callable) -> void:
+	var am: Node = load("res://autoloads/AudioManager.gd").new()
+
+	# 締めは完全5度上=3/2。
+	check.call(absf(am.CLEAR_FIFTH_RATIO - 1.5) < EPS, "クリア締めは5度上(×1.5) (%.3f)" % am.CLEAR_FIFTH_RATIO)
+	# 「一拍置いて」の間は三連打の間隔より広い(締めが分離して聞こえる)。
+	check.call(am.CLEAR_REST > am.CLEAR_HIT_INTERVAL, "締め前の間が三連打の間隔より広い")
+	check.call(am.CLEAR_HIT_INTERVAL > 0.0, "三連打の間隔が正")
+	# クリア音素材が読めてOggVorbisであること。
+	var note := load(am.CLEAR_NOTE_PATH) as AudioStream
+	check.call(note != null and note is AudioStreamOggVorbis, "クリア音がOggVorbisで読める (%s)" % am.CLEAR_NOTE_PATH)
+
+	# ツリー外(get_tree()==null)でも最初の一打で戻り、落ちないこと。
+	am.play_clear_fanfare()
+	check.call(true, "ツリー外でも play_clear_fanfare が落ちない")
 	am.free()
 
 
