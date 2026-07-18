@@ -114,7 +114,9 @@ func _on_give_up_requested() -> void:
 func goto_reward() -> void:
 	var reward := _swap_screen(REWARD_SCENE)
 	reward.part_chosen.connect(_on_part_chosen)
-	reward.setup(CustomPartCatalog.pick_choices(CustomPartCatalog.REWARD_CHOICES))
+	# 今倒した段のレベルほどレアが出やすい。current_step()は段選択時と同じ値。
+	var level := EnemyRoster.level_for_step(GameState.map_tree.current_step())
+	reward.setup(CustomPartCatalog.pick_choices(CustomPartCatalog.REWARD_CHOICES, null, level))
 
 
 func _on_part_chosen(part: CustomPart) -> void:

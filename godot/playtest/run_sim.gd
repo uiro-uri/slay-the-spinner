@@ -89,8 +89,10 @@ static func play_one(
 			won_all = true
 			break
 
-		# 勝利報酬。Main._on_part_chosenと同じ適用。
-		var choices := CustomPartCatalog.pick_choices(CustomPartCatalog.REWARD_CHOICES, rng)
+		# 勝利報酬。Main._on_part_chosenと同じ適用。倒した敵のレベルほどレアが出やすい。
+		var choices := CustomPartCatalog.pick_choices(
+			CustomPartCatalog.REWARD_CHOICES, rng, int(record["level"])
+		)
 		var part := _choose_part(choices, reward_policy, rng, stats)
 		part.apply_to(stats)
 		parts.append(part.id)
