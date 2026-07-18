@@ -21,6 +21,7 @@ const SPAWN_SPREAD_DEG := 30.0
 
 
 func _init() -> void:
+	_load_translations()
 	var a := _args()
 	var cmd: String = a.get("cmd", "")
 	var path: String = a.get("state", "")
@@ -52,12 +53,19 @@ func _default_state(seed_value: int) -> Dictionary:
 		"dead": false,
 	}
 
+## SpinnerStatsの@exportステータスを項目名決め打ちせず総称的に拾う。
+## バランス調整で項目が増えても(例: spin_decay等)取りこぼさないようにする。
 func _stats_dict(s: SpinnerStats) -> Dictionary:
-	return {"mass": s.mass, "radius": s.radius, "friction": s.friction, "restitution": s.restitution, "rps": s.rps}
+	var d := {}
+	for p in s.get_property_list():
+		if (p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE) and (p.type == TYPE_FLOAT or p.type == TYPE_INT):
+			d[p.name] = s.get(p.name)
+	return d
 
 func _stats_from(d: Dictionary) -> SpinnerStats:
 	var s := SpinnerStats.new()
-	s.mass = d["mass"]; s.radius = d["radius"]; s.friction = d["friction"]; s.restitution = d["restitution"]; s.rps = d["rps"]
+	for k in d:
+		s.set(k, d[k])
 	return s
 
 func _load(path: String) -> Dictionary:
@@ -190,7 +198,7 @@ func _reward(state: Dictionary, path: String, bseed: int) -> void:
 	var choices := CustomPartCatalog.pick_choices(CustomPartCatalog.REWARD_CHOICES, rng, level)
 	print("=== REWARD 段%d(Lv%d)撃破 3枚から1枚 (bseed=%d) ===" % [tree.current_step(), level, bseed])
 	for c in choices:
-		print("  id=%d '%s' [%s] %s" % [c.id, c.title_key, _rarity(c.rarity), _card_text(c)])
+		print("  id=%d '%s' [%s] %s" % [c.id, c.title_key, _rarity(c.rarity), _desc(c)])
 	print("→ pick --id=<ID>")
 
 func _pick(state: Dictionary, path: String, id: int) -> void:
@@ -210,7 +218,7 @@ func _pick(state: Dictionary, path: String, id: int) -> void:
 	if tree.is_goal():
 		state["cleared"] = true
 	_save(state, path)
-	print("取得: id=%d '%s' → %s" % [id, part.title_key, _card_text(part)])
+	print("取得: id=%d '%s' → %s" % [id, part.title_key, _desc(part)])
 	_print_stats(state)
 	if state["cleared"]:
 		print("！！！全段突破・ラン完了！！！")
@@ -291,6 +299,18 @@ func _print_reachable(tree: MapTree) -> void:
 	for c in tree.next_coords():
 		var n: MapTree.MapNode = tree.nodes[c]
 		print("  col%+d : Lv%d %d体 %s" % [c.y, n.level(), n.enemy_count(), n.field.title_key])
+
+## カードの実説明文(describe)を1行にして返す。プレイヤーが報酬画面で読むテキストそのもの。
+## 複合効果(バランス調整で足された注記)もそのまま出る。
+func _desc(c: CustomPart) -> String:
+	return c.describe().replace("\n", " / ")
+
+func _load_translations() -> void:
+	for loc in ["en", "ja"]:
+		var t = load("res://translations/strings.%s.translation" % loc)
+		if t != null:
+			TranslationServer.add_translation(t)
+	TranslationServer.set_locale("ja")
 
 func _card_text(c: CustomPart) -> String:
 	match c.effect:
