@@ -270,9 +270,10 @@ func _ids(state: Dictionary) -> Array[int]:
 
 func _print_stats(state: Dictionary) -> void:
 	var s = state["stats"]
-	print("ステータス: mass=%.2f radius=%.2f friction=%.3f rest=%.2f rps=%.1f  (寿命目安rps/radius=%.1f 硬さmass*r^2=%.2f)" % [
-		s["mass"], s["radius"], s["friction"], s["restitution"], s["rps"],
-		float(s["rps"]) / float(s["radius"]), float(s["mass"]) * float(s["radius"]) * float(s["radius"])])
+	# 生のステータスだけ出す。寿命=rps/radius・硬さ=mass*r^2 のような「式」は
+	# 盲プレイの汚染になるので出さない(プレイヤーは公式を渡されない)。
+	print("ステータス: mass=%.2f radius=%.2f friction=%.3f rest=%.2f rps=%.1f" % [
+		s["mass"], s["radius"], s["friction"], s["restitution"], s["rps"]])
 
 func _print_parts(state: Dictionary) -> void:
 	if state["parts"].is_empty(): print("所持パーツ: なし"); return
