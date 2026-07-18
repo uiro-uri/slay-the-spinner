@@ -36,6 +36,8 @@ class State:
 static func resolve(request: BattleRequest) -> BattleResult:
 	var result := BattleResult.new()
 	result.time_step = request.time_step
+	# 再生側の無敵表示のため、入力の無敵時間を結果へ写す。
+	result.ghost_duration = request.ghost_duration
 
 	var player := State.new(request.player)
 	var enemies: Array[State] = []

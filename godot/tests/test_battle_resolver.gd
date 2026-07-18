@@ -124,6 +124,16 @@ func _test_serialization_round_trip(check: Callable) -> void:
 			BattleRequest.from_dict(ghosted.to_dict()).ghost_duration
 		]
 	)
+	# resolveは無敵時間を結果へ写し、結果もdict往復で保つ(再生はResultだけで完結する)。
+	var gres := BattleResolver.resolve(ghosted)
+	check.call(
+		is_equal_approx(gres.ghost_duration, 1.5),
+		"結果: resolveがghost_durationを結果へ写す (%.2f)" % gres.ghost_duration
+	)
+	check.call(
+		is_equal_approx(BattleResult.from_dict(gres.to_dict()).ghost_duration, 1.5),
+		"結果: ghost_durationがdict往復で保たれる"
+	)
 
 	# 実際にJSONへ通せること。文字列化できない値が混ざっていると
 	# サーバーへ送る段になって初めて気づくことになる。
