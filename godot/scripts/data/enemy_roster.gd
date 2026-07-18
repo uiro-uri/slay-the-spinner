@@ -65,7 +65,10 @@ static func all() -> Array[EnemyData]:
 		_enemy(4, "ENEMY_4_1", 9.0, 3.0, 1.6, 0.98, 1.0, 10.5),
 		_enemy(4, "ENEMY_4_2", 9.5, 2.8, 1.7, 0.985, 1.0, 10.5),
 		# ボス。大きく重く、寿命も硬さもプレイヤーを上回る。
-		_enemy(5, "ENEMY_5_1", 11.0, 4.5, 2.4, 0.98, 1.0, 26.0),
+		# spin_decay=0.6で自然回転減衰を弱める＝勝手には死ににくい。ボスは
+		# 大きく(半径4.5)自然減衰が速いので、放置でも自滅していた。それを削ると
+		# GHOSTで無敵のまま待っても勝手に死なない＝倒すには実際に削る必要がある。
+		_enemy(5, "ENEMY_5_1", 11.0, 4.5, 2.4, 0.98, 1.0, 26.0, 0.6),
 	]
 
 
@@ -171,7 +174,8 @@ static func _scaled(enemy: EnemyData, factor: float) -> EnemyData:
 
 static func _enemy(
 	level: int, name_: String, launch_speed: float,
-	mass: float, radius: float, friction: float, restitution: float, rps: float
+	mass: float, radius: float, friction: float, restitution: float, rps: float,
+	spin_decay: float = 1.0
 ) -> EnemyData:
 	var stats := SpinnerStats.new()
 	stats.mass = mass
@@ -179,4 +183,6 @@ static func _enemy(
 	stats.friction = friction
 	stats.restitution = restitution
 	stats.rps = rps
+	# 既定1.0。ボスなど自滅しやすい敵だけ<1にして自然減衰を弱める。
+	stats.spin_decay = spin_decay
 	return EnemyData.make(level, name_, launch_speed, stats)
