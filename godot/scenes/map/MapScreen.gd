@@ -159,8 +159,10 @@ func _on_node_unhover(coord: Vector2i) -> void:
 
 ## このランで取得済みのパーツ一覧を組み直す。組み立てはクリア画面と共有する
 ## AcquiredUpgradeList に任せる(集約はさらにその先のカタログ純関数)。
+## 効果説明は省いて名前だけでコンパクトに並べる(show_description=false)。ステータスの
+## 中身は左上の常時オーバーレイ(StatPanel)がバーで見せるので、ここは取得の一覧に徹する。
 func _rebuild_acquired() -> void:
-	AcquiredUpgradeList.populate(_acquired_list, GameState.acquired_part_ids)
+	AcquiredUpgradeList.populate(_acquired_list, GameState.acquired_part_ids, false)
 
 
 func _to_pixel(coord: Vector2i) -> Vector2:
