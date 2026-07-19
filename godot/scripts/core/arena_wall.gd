@@ -17,10 +17,13 @@ extends RefCounted
 ## アリーナの外周の形。矩形のほか、正多角形で非矩形の土俵を作れる。
 ## ROUNDは辺の多い正多角形で円を近似する（ArenaWallは点＋法線の半平面なので
 ## 曲面そのものは表せない。辺を増やせば円に見え、壁の当たり判定は無改造で通る）。
-enum WallShape { RECT, OCTAGON, ROUND }
+## ELLIPSEはROUNDと同じ点＋法線の半平面だが、半軸を縦横で変えた楕円。横長の土俵に使う。
+## 法線は放射方向ではなく楕円の勾配方向（外向き＝normalize(cosθ/ax, sinθ/ay)）。
+enum WallShape { RECT, OCTAGON, ROUND, ELLIPSE }
 
 const _OCTAGON_SIDES := 8
 const _ROUND_SIDES := 32
+const _ELLIPSE_SIDES := 32
 
 ## 壁上の任意の1点。
 var point: Vector2
@@ -71,13 +74,30 @@ static func from_polygon(center: Vector2, circumradius: float, sides: int) -> Ar
 	return walls
 
 
-## wall_shape に応じて壁を組む。RECTは既存のfrom_rect、それ以外は正多角形。
+## 楕円の各頂点を「頂点 + 楕円勾配の内向き法線」の半平面として返す。
+## 頂点 p = center + (ax·cosθ, ay·sinθ)。楕円 (x/ax)²+(y/ay)²=1 の外向き法線は
+## ∇ = (cosθ/ax, sinθ/ay) 方向。内向きはその逆。32辺で楕円を近似する。
+static func from_ellipse(center: Vector2, semi_axes: Vector2, sides: int) -> Array[ArenaWall]:
+	var walls: Array[ArenaWall] = []
+	for i in sides:
+		var theta := float(i) / float(sides) * TAU
+		var c := cos(theta)
+		var s := sin(theta)
+		var point := center + Vector2(semi_axes.x * c, semi_axes.y * s)
+		var outward := Vector2(c / semi_axes.x, s / semi_axes.y)
+		walls.append(ArenaWall.new(point, -outward))
+	return walls
+
+
+## wall_shape に応じて壁を組む。RECTは既存のfrom_rect、それ以外は正多角形／楕円。
 static func build(shape: WallShape, bounds: Rect2) -> Array[ArenaWall]:
 	match shape:
 		WallShape.OCTAGON:
 			return from_polygon(bounds.get_center(), _circumradius(bounds), _OCTAGON_SIDES)
 		WallShape.ROUND:
 			return from_polygon(bounds.get_center(), _circumradius(bounds), _ROUND_SIDES)
+		WallShape.ELLIPSE:
+			return from_ellipse(bounds.get_center(), bounds.size * 0.5, _ELLIPSE_SIDES)
 		_:
 			return from_rect(bounds)
 
@@ -92,9 +112,16 @@ static func outline_points(shape: WallShape, bounds: Rect2) -> PackedVector2Arra
 			Vector2(bounds.position.x, bounds.end.y),
 		])
 	var center := bounds.get_center()
-	var r := _circumradius(bounds)
 	var sides := _sides_for(shape)
 	var pts := PackedVector2Array()
+	if shape == WallShape.ELLIPSE:
+		# 楕円は半軸を縦横で変えるので、方向ベクトルを半軸でスケールして頂点を打つ。
+		var semi := bounds.size * 0.5
+		for i in sides:
+			var theta := float(i) / float(sides) * TAU
+			pts.append(center + Vector2(semi.x * cos(theta), semi.y * sin(theta)))
+		return pts
+	var r := _circumradius(bounds)
 	for i in sides:
 		pts.append(center + Vector2.RIGHT.rotated(float(i) / float(sides) * TAU) * r)
 	return pts
@@ -123,6 +150,21 @@ static func clamp_inside_circle(
 	return center + delta.normalized() * max_dist
 
 
+## 楕円アリーナ用のクランプ。横長楕円の広い横方向を活かすため、円クランプではなく
+## 楕円の内側へ寄せる。半軸から半径を引いた楕円で正規化し、はみ出す点だけ縁へ戻す。
+## 半軸を一律に半径ぶん縮めるのは近似だが、必ず内側になる保守側。
+static func clamp_inside_ellipse(
+	center: Vector2, semi_axes: Vector2, pos: Vector2, radius: float
+) -> Vector2:
+	var eff := Vector2(maxf(semi_axes.x - radius, 0.01), maxf(semi_axes.y - radius, 0.01))
+	var delta := pos - center
+	var u := Vector2(delta.x / eff.x, delta.y / eff.y)
+	if u.length() <= 1.0:
+		return pos
+	var un := u.normalized()
+	return center + Vector2(un.x * eff.x, un.y * eff.y)
+
+
 ## 矩形の短辺の半分＝多角形の外接円半径。土俵が縦横で違っても内側に収まる。
 static func _circumradius(bounds: Rect2) -> float:
 	return minf(bounds.size.x, bounds.size.y) * 0.5
@@ -134,5 +176,7 @@ static func _sides_for(shape: WallShape) -> int:
 			return _OCTAGON_SIDES
 		WallShape.ROUND:
 			return _ROUND_SIDES
+		WallShape.ELLIPSE:
+			return _ELLIPSE_SIDES
 		_:
 			return 4

@@ -17,23 +17,37 @@ const CENTER_MARK_COLOR := Palette.FLOOR_MARK
 const OBSTACLE_COLOR := Palette.NEON_VIOLET
 const OBSTACLE_HIGHLIGHT := Palette.NEON_VIOLET_HI
 
+## 等高線を描く分割数。楕円でも滑らかに見える程度。
+const _CONTOUR_SEGMENTS := 48
+
 var _bounds: Rect2 = BOUNDS
 var _wall_shape: ArenaWall.WallShape = ArenaWall.WallShape.RECT
 var _obstacles: Array[Vector3] = []
+var _stage_shape: SpinnerPhysics.StageShape = SpinnerPhysics.StageShape.DISH
+var _stage_strength: float = 4.9
 
 var walls: Array[ArenaWall] = ArenaWall.from_rect(BOUNDS)
 
 
-## 土俵をフィールドに合わせて設定する。nullなら既定(矩形10x10)のまま。
-func setup(field: FieldData) -> void:
+## 土俵をフィールドに合わせて設定する。nullなら既定(矩形10x10)。傾斜(等高線)は
+## フィールドがあればその値、無ければ引数のフォールバック(Battleの@export)を使う。
+func setup(
+	field: FieldData,
+	fallback_shape: SpinnerPhysics.StageShape = SpinnerPhysics.StageShape.DISH,
+	fallback_strength: float = 4.9
+) -> void:
 	if field != null:
 		_bounds = field.arena_bounds
 		_wall_shape = field.wall_shape
 		_obstacles = field.obstacles
+		_stage_shape = field.stage_shape
+		_stage_strength = field.stage_strength
 	else:
 		_bounds = BOUNDS
 		_wall_shape = ArenaWall.WallShape.RECT
 		_obstacles = []
+		_stage_shape = fallback_shape
+		_stage_strength = fallback_strength
 	walls = ArenaWall.build(_wall_shape, _bounds)
 	queue_redraw()
 
@@ -49,12 +63,9 @@ func _draw() -> void:
 	else:
 		draw_colored_polygon(ArenaWall.outline_points(_wall_shape, _bounds), FLOOR_COLOR)
 
-	# 中央が低いことを示す同心円。すり鉢の底が見た目で分かるように。
-	# 内接円半径に合わせるので、土俵の大きさ・形が変わっても縁からはみ出ない。
-	var max_r := ArenaWall.inradius_for(_wall_shape, _bounds)
-	for i in range(1, 5):
-		var r := max_r * (float(i) / 4.0)
-		draw_arc(center(), r, 0, TAU, 64, CENTER_MARK_COLOR, 0.03)
+	# 傾斜の等高線。等しい高さ間隔で引くので、急峻なほど本数が増え外周で密になる。
+	# すり鉢の底の位置と急峻さが一目で読める。楕円ボウルでは同心楕円として描く。
+	_draw_contours()
 
 	# 壁の輪郭。矩形は枠線、非矩形は閉じた多角形。
 	if _wall_shape == ArenaWall.WallShape.RECT:
@@ -70,3 +81,29 @@ func _draw() -> void:
 		var obstacle_center := Vector2(o.x, o.y)
 		draw_circle(obstacle_center, o.z, OBSTACLE_COLOR)
 		draw_circle(obstacle_center, o.z * 0.55, OBSTACLE_HIGHLIGHT)
+
+
+## 傾斜の等高線を同心の円/楕円で描く。半径はStageContoursが等しい高さ間隔で決める。
+func _draw_contours() -> void:
+	# 描画用の半軸。楕円は縦横で違う半軸、それ以外は内接円半径の真円。
+	var semi: Vector2
+	if _wall_shape == ArenaWall.WallShape.ELLIPSE:
+		semi = _bounds.size * 0.5
+	else:
+		var inr := ArenaWall.inradius_for(_wall_shape, _bounds)
+		semi = Vector2(inr, inr)
+	# 本数・高さは代表半径(半軸の相乗平均)で測る。円ならそのまま内接円半径。
+	var rep_r := sqrt(semi.x * semi.y)
+	var radii := StageContours.contour_radii(_stage_shape, _stage_strength, rep_r)
+	for r in radii:
+		var frac := r / rep_r
+		_draw_ellipse_outline(center(), semi * frac, CENTER_MARK_COLOR, 0.03)
+
+
+## 中心cの楕円(半軸semi)の輪郭を閉じた折れ線で描く。
+func _draw_ellipse_outline(c: Vector2, semi: Vector2, color: Color, width: float) -> void:
+	var pts := PackedVector2Array()
+	for i in range(_CONTOUR_SEGMENTS + 1):
+		var theta := float(i) / float(_CONTOUR_SEGMENTS) * TAU
+		pts.append(c + Vector2(semi.x * cos(theta), semi.y * sin(theta)))
+	draw_polyline(pts, color, width)

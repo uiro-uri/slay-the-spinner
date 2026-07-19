@@ -50,3 +50,21 @@ func inradius() -> float:
 ## アリーナの中心。
 func center() -> Vector2:
 	return arena_bounds.get_center()
+
+
+## 楕円ボウルの傾斜ワープ用の半軸比。DISHの傾斜を成分ごとに 1/軸² で弱める。
+func slope_axes() -> Vector2:
+	return slope_axes_for(wall_shape, arena_bounds)
+
+
+## wall_shape と bounds から傾斜ワープの半軸比を出す。ELLIPSE以外は円＝Vector2.ONE。
+## 積=1に正規化して strength の意味を保つ: ax=√(w/h), ay=√(h/w)。横長(w>h)で
+## x方向の戻しが弱くy方向が強い＝谷が横に伸びる。resolver とテストから共用する静的関数。
+static func slope_axes_for(shape: ArenaWall.WallShape, bounds: Rect2) -> Vector2:
+	if shape != ArenaWall.WallShape.ELLIPSE:
+		return Vector2.ONE
+	var w := bounds.size.x
+	var h := bounds.size.y
+	if w <= 0.0 or h <= 0.0:
+		return Vector2.ONE
+	return Vector2(sqrt(w / h), sqrt(h / w))

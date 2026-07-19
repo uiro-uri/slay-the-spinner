@@ -23,11 +23,15 @@ extends RefCounted
 ## ステージの形。ベイブレードのスタジアムのように中央へ向かって傾斜している。
 enum StageShape {
 	## 放物面のすり鉢。中心から離れるほど傾斜が急になる。実物のスタジアムに近い。
-	## プロトタイプのコードが実際にやっていた挙動。
+	## プロトタイプのコードが実際にやっていた挙動。高さ ∝ r²、加速度 ∝ r。
 	DISH,
 	## 一定傾斜の円錐。どこでも同じ角度で中心へ滑り落ちる。
 	## プロトタイプの g = 9.81*sin(30°) という定数はこちらの意図を示唆する。
+	## 高さ ∝ r、加速度は一定。
 	CONE,
+	## 外側ほど急になる深いすり鉢。高さ ∝ r³、加速度 ∝ r²。DISH(∝r)より縁際が急だが、
+	## 中心が緩すぎて噛み合わなくならない程度に留めた形。等高線が外周で密になる。
+	STEEP,
 }
 
 
@@ -36,14 +40,30 @@ enum StageShape {
 ## DISH: 変位に比例する（放物面のすり鉢＝バネと同じ式）。中心付近は緩やかで
 ##       外側ほど強く戻される。
 ## CONE: 大きさ一定で中心を向く（一定傾斜の斜面を滑る成分）。
+## STEEP: 変位の2乗で戻す。DISHより外側で急。
+##
+## slope_axes は楕円ボウルの半軸比（積=1に正規化した Vector2）。既定 ONE で円＝従来と
+## 厳密一致。横長楕円では x 軸を大きく取り、成分ごとに 1/軸² で戻しを弱める＝谷が横に伸びる。
+## 楕円ワープは DISH にのみ効かせる（楕円ステージは DISH を使う）。STEEP/CONE は円専用で
+## slope_axes を無視する。
 static func stage_slope_accel(
-	pos: Vector2, center: Vector2, strength: float, shape: StageShape = StageShape.DISH
+	pos: Vector2, center: Vector2, strength: float,
+	shape: StageShape = StageShape.DISH, slope_axes: Vector2 = Vector2.ONE
 ) -> Vector2:
 	var toward_center := center - pos
-	if shape == StageShape.CONE:
-		# normalized()はゼロベクトルにゼロを返すので、中心では力ゼロになる。
-		return strength * toward_center.normalized()
-	return strength * toward_center
+	match shape:
+		StageShape.CONE:
+			# normalized()はゼロベクトルにゼロを返すので、中心では力ゼロになる。
+			return strength * toward_center.normalized()
+		StageShape.STEEP:
+			# 加速度 ∝ r²。length()×変位で2乗を作る。中心では0。
+			return strength * toward_center.length() * toward_center
+		_:
+			# DISH。楕円ワープは成分ごとに 1/軸²。ONEなら strength*(center-pos)。
+			return strength * Vector2(
+				toward_center.x / (slope_axes.x * slope_axes.x),
+				toward_center.y / (slope_axes.y * slope_axes.y)
+			)
 
 
 ## 進行方向と逆向きの一定減速度。

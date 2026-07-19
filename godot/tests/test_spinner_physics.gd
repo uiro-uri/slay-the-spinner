@@ -22,11 +22,15 @@ const EPS := 1e-4
 const SHAPE_NAMES := {
 	SpinnerPhysics.StageShape.DISH: "すり鉢",
 	SpinnerPhysics.StageShape.CONE: "円錐",
+	SpinnerPhysics.StageShape.STEEP: "急峻",
 }
 
 
 func run(check: Callable) -> void:
 	_test_stage_slope(check)
+	_test_stage_steep(check)
+	_test_stage_ellipse_warp(check)
+	_test_contours(check)
 	_test_friction(check)
 	_test_collision_detection(check)
 	_test_elastic_formula_momentum(check)
@@ -76,6 +80,71 @@ func _test_stage_slope(check: Callable) -> void:
 		absf(cone_far - cone_near) < EPS and absf(cone_near - 4.9) < EPS,
 		"円錐: 距離によらず一定 (%.3f vs %.3f)" % [cone_near, cone_far]
 	)
+
+
+## 急峻(STEEP)は加速度∝r²。DISHより外側で急に強くなることを確認する。
+func _test_stage_steep(check: Callable) -> void:
+	var center := Vector2(5, 5)
+	var s := SpinnerPhysics.StageShape.STEEP
+
+	# r=1 と r=2 で 2²=4倍。変位の2乗で戻す。
+	var near := SpinnerPhysics.stage_slope_accel(Vector2(6, 5), center, 1.0, s).length()
+	var far := SpinnerPhysics.stage_slope_accel(Vector2(7, 5), center, 1.0, s).length()
+	check.call(
+		absf(far - near * 4.0) < EPS,
+		"急峻: 変位の2乗で強くなる (%.3f vs %.3f)" % [far, near * 4.0]
+	)
+
+	# 外周では DISH より急。同じ strength・同じ遠方(r=3)で比較。r³ > r。
+	var steep_far := SpinnerPhysics.stage_slope_accel(
+		Vector2(8, 5), center, 1.0, s).length()
+	var dish_far := SpinnerPhysics.stage_slope_accel(
+		Vector2(8, 5), center, 1.0, SpinnerPhysics.StageShape.DISH).length()
+	check.call(steep_far > dish_far, "急峻: 外周ではDISHより急 (%.3f > %.3f)" % [steep_far, dish_far])
+
+
+## 楕円ワープ: 横長(x軸が大)では x 方向の戻しが y より弱い。ONEで従来DISHと一致。
+func _test_stage_ellipse_warp(check: Callable) -> void:
+	var center := Vector2(5, 5)
+	var d := SpinnerPhysics.StageShape.DISH
+	# 積=1に正規化した横長の軸(ax>1>ay)。
+	var axes := Vector2(sqrt(2.0), sqrt(0.5))
+
+	# 同じ距離2でも、x方向の戻し < y方向の戻し(横に転がりやすい谷)。
+	var ax := SpinnerPhysics.stage_slope_accel(Vector2(7, 5), center, 4.9, d, axes).length()
+	var ay := SpinnerPhysics.stage_slope_accel(Vector2(5, 7), center, 4.9, d, axes).length()
+	check.call(ax < ay, "楕円ワープ: 横方向の戻しが縦より弱い (%.3f < %.3f)" % [ax, ay])
+
+	# slope_axes=ONE は従来のDISHと厳密一致。
+	var warped := SpinnerPhysics.stage_slope_accel(Vector2(8, 6), center, 4.9, d, Vector2.ONE)
+	var plain := SpinnerPhysics.stage_slope_accel(Vector2(8, 6), center, 4.9, d)
+	check.call(warped.is_equal_approx(plain), "楕円ワープ: 軸ONEはDISHと一致")
+
+
+## 等高線: 急峻(strength大/STEEP)ほど本数が増え、DISHは外周で詰まり円錐は等間隔。
+func _test_contours(check: Callable) -> void:
+	var d := SpinnerPhysics.StageShape.DISH
+	# strengthが大きいほど本数が単調非減少(クランプ上限まで)。
+	var few := StageContours.contour_radii(d, 2.0, 5.0).size()
+	var many := StageContours.contour_radii(d, 8.0, 5.0).size()
+	check.call(many >= few and many > 0, "等高線: 急峻(強)なほど本数が多い (%d >= %d)" % [many, few])
+
+	# DISHは外周ほど間隔が狭い(r∝√f)。隣り合う輪郭の差が「厳密に」減少する
+	# (等間隔では駄目＝すり鉢の外周が急という情報が出ていない)。
+	var dish := StageContours.contour_radii(d, 4.9, 5.0)
+	var dish_ok := dish.size() >= 3
+	for i in range(2, dish.size()):
+		if dish[i] - dish[i - 1] >= dish[i - 1] - dish[i - 2] - EPS:
+			dish_ok = false
+	check.call(dish_ok, "等高線: すり鉢は外周ほど詰まる")
+
+	# 円錐は等高さ=等間隔(r∝f)。隣接差が一定。
+	var cone := StageContours.contour_radii(SpinnerPhysics.StageShape.CONE, 4.9, 5.0)
+	var cone_ok := cone.size() >= 3
+	for i in range(2, cone.size()):
+		if absf((cone[i] - cone[i - 1]) - (cone[i - 1] - cone[i - 2])) > EPS:
+			cone_ok = false
+	check.call(cone_ok, "等高線: 円錐は等間隔")
 
 
 func _test_friction(check: Callable) -> void:

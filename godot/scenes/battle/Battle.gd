@@ -261,8 +261,9 @@ func _ready() -> void:
 func _recompute_layout() -> void:
 	var visible := get_viewport().get_visible_rect().size
 	if not ScreenLayout.is_portrait(visible):
-		_arena_root.position = LAND_ARENA_POS
 		_arena_root.scale = LAND_ARENA_SCALE
+		# 非正方の土俵(横長楕円など)は正方footprintの中央へ寄せる。10x10ならオフセット0で従来通り。
+		_arena_root.position = LAND_ARENA_POS + _footprint_offset(LAND_ARENA_SCALE.x, ARENA_PX)
 		_record_arena_base()
 		_set_rect(_message, LAND_MESSAGE_RECT)
 		_set_rect(_bars, LAND_BARS_RECT)
@@ -277,13 +278,22 @@ func _recompute_layout() -> void:
 	var top_left := ScreenLayout.placement(block, visible, 0.5, portrait_vertical_bias)
 
 	_arena_root.scale = LAND_ARENA_SCALE * k
-	_arena_root.position = top_left
+	# 非正方の土俵はアリーナ正方領域(arena_px)の中央へ寄せる。10x10ならオフセット0。
+	_arena_root.position = top_left + _footprint_offset(LAND_ARENA_SCALE.x * k, arena_px)
 	_record_arena_base()
 
 	# メッセージはアリーナ幅に合わせ、アリーナの縦中央あたりへ。
 	_set_rect(_message, Rect2(top_left.x, top_left.y + arena_px * 0.4, arena_px, BAR_ROW_H))
 	# バーはアリーナ直下、幅いっぱい。
 	_set_rect(_bars, Rect2(top_left.x, top_left.y + arena_px + BAND_GAP, arena_px, BAR_ROW_H))
+
+
+## 土俵(bounds)を正方footprintの中央へ寄せるためのピクセルオフセット。
+## px_per_unitはArenaRootのスケール(1ユニット当たりpx)。10x10ならbounds*scale=footprintで
+## オフセット0＝従来の左上詰めのまま。横長楕円など縦が短い土俵は下方向へ寄って中央に来る。
+func _footprint_offset(px_per_unit: float, footprint: float) -> Vector2:
+	var scaled := _bounds().size * px_per_unit
+	return (Vector2(footprint, footprint) - scaled) * 0.5
 
 
 ## いまのレイアウトのArenaRoot変換を決着演出の起点として控える。演出はここを
@@ -395,8 +405,9 @@ func _apply_run_state() -> void:
 	if GameState.player_stats != null:
 		_player.stats = GameState.player_stats
 	_field = GameState.pending_field
-	# 土俵の見た目(壁の位置・形状・障害物)を反映してから最初の描画に入る。
-	_arena.setup(_field)
+	# 土俵の見た目(壁の位置・形状・障害物・等高線)を反映してから最初の描画に入る。
+	# フィールドが無い単体調整時は、シーンの@export(stage_shape/strength)を等高線に使う。
+	_arena.setup(_field, stage_shape, stage_strength)
 
 
 ## 土俵の矩形。フィールドがあればそれ、なければシーン既定のArena.BOUNDS。
@@ -418,11 +429,18 @@ func _inradius() -> float:
 	return ArenaWall.inradius_for(ArenaWall.WallShape.RECT, Arena.BOUNDS)
 
 
-## 発射地点を土俵の内側へ寄せる。矩形は矩形クランプ、非矩形は内接円クランプ。
+## 発射地点を土俵の内側へ寄せる。矩形は矩形クランプ、楕円は楕円クランプ、
+## その他の非矩形は内接円クランプ。
 func _clamp_launch(pos: Vector2) -> Vector2:
-	if _wall_shape() == ArenaWall.WallShape.RECT:
-		return ArenaWall.clamp_inside(_bounds(), pos, _player.stats.radius)
-	return ArenaWall.clamp_inside_circle(_center(), _inradius(), pos, _player.stats.radius)
+	match _wall_shape():
+		ArenaWall.WallShape.RECT:
+			return ArenaWall.clamp_inside(_bounds(), pos, _player.stats.radius)
+		ArenaWall.WallShape.ELLIPSE:
+			return ArenaWall.clamp_inside_ellipse(
+				_center(), _bounds().size * 0.5, pos, _player.stats.radius)
+		_:
+			return ArenaWall.clamp_inside_circle(
+				_center(), _inradius(), pos, _player.stats.radius)
 
 
 ## 狙っている間、コマを三角形の頂点(＝発射地点)へ置く。ここから飛ぶ、が

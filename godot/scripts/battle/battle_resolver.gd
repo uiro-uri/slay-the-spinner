@@ -47,6 +47,8 @@ static func resolve(request: BattleRequest) -> BattleResult:
 		result.enemy_tracks.append(track)
 	var walls := ArenaWall.build(request.wall_shape, request.arena_bounds)
 	var center := request.arena_bounds.get_center()
+	# 楕円ボウルの傾斜ワープ軸。ELLIPSE以外はONEで従来と一致。全体で一定なので先に1回だけ求める。
+	var slope_axes := FieldData.slope_axes_for(request.wall_shape, request.arena_bounds)
 
 	var dt := request.time_step
 	var max_steps := int(request.max_duration / dt)
@@ -58,9 +60,9 @@ static func resolve(request: BattleRequest) -> BattleResult:
 		for i in enemies.size():
 			result.enemy_tracks[i].append(_snapshot(enemies[i]))
 
-		_integrate(player, center, request, dt)
+		_integrate(player, center, request, dt, slope_axes)
 		for enemy in enemies:
-			_integrate(enemy, center, request, dt)
+			_integrate(enemy, center, request, dt, slope_axes)
 
 		# 全ペアの衝突を固定順で解く。まずプレイヤー対各敵(index順)、次に敵同士
 		# (i<j)。落ちたコマ(alive=false)は削り合いに参加しない。順序を固定するのは
@@ -125,11 +127,13 @@ static func _snapshot(s: State) -> BattleResult.Snapshot:
 	return BattleResult.Snapshot.new(s.position, s.velocity, s.rps)
 
 
-static func _integrate(s: State, center: Vector2, req: BattleRequest, dt: float) -> void:
+static func _integrate(
+	s: State, center: Vector2, req: BattleRequest, dt: float, slope_axes: Vector2
+) -> void:
 	s.position += s.velocity * dt
 	var accel := SpinnerPhysics.friction_accel(s.velocity, s.stats.friction)
 	accel += SpinnerPhysics.stage_slope_accel(
-		s.position, center, req.stage_strength, req.stage_shape
+		s.position, center, req.stage_strength, req.stage_shape, slope_axes
 	)
 	s.velocity += accel * dt
 

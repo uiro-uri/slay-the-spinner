@@ -34,6 +34,16 @@ static func all() -> Array[FieldData]:
 		FieldData.make(
 			"FIELD_ROUND", _BOUNDS, ArenaWall.WallShape.ROUND,
 			SpinnerPhysics.StageShape.DISH, 6.0),
+		# 深いすり鉢。外周ほど急になる(高さ∝r³)。DISHより縁際が急だが中心はそこまで緩くない。
+		# STEEPは加速度∝r²。縁(r≒5)の効きをclassic DISH(≒4.9*5)に合わせて強度は約1.0。
+		FieldData.make(
+			"FIELD_STEEP", _BOUNDS, ArenaWall.WallShape.RECT,
+			SpinnerPhysics.StageShape.STEEP, 1.0),
+		# 横長楕円のボウル。壁も傾斜も横に伸び、横方向は転がりやすく縦は素早く戻る。
+		# 幅は10のまま(footprint内)、高さ6.5で半軸(5,3.25)。出現リングは短半径に自動クランプ。
+		FieldData.make(
+			"FIELD_OVAL", Rect2(0, 0, 10, 6.5), ArenaWall.WallShape.ELLIPSE,
+			SpinnerPhysics.StageShape.DISH, 4.9),
 		# 障害物あり。柱は中心・出現リングを避けて配置する。
 		FieldData.make(
 			"FIELD_PILLARS", _BOUNDS, ArenaWall.WallShape.RECT,
