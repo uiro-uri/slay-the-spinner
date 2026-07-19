@@ -114,17 +114,17 @@ static func pick_for_step(step: int, rng: RandomNumberGenerator = null) -> Enemy
 
 ## その段の出現グループ(1〜3体)を選ぶ。乱戦パターンの入り口。
 ##
-## ほとんどは1体。たまに2〜3体の乱戦になる。複数体のときは1段下のレベルから
-## 選ぶが、各体は**そのレベルのまま**戦わせる(頭数でrpsを弱めない)。
+## ほとんどは1体。たまに2〜3体の乱戦になる。複数体でも**単体と同じ、その段の
+## レベル**から選ぶ(各体は据え置きで、頭数でrpsを弱めない)。
 ## ボス(レベル5)は演出上つねに単体。
 ##
-## かつては総回転量を一定に保つため各体のrpsを頭数で割っていたが、割ると
-## 「衝突1回で終わる」コマになり実測で一撃死が多発した(3体Lv1で12.7%)。
-## 下限を張って凌いでいたものの、弱めない方針に切り替えた:乱戦は頭数ぶん
-## 純粋に手強くなるが、その見返りに**倒した頭数だけ報酬を選べる**(Main.gdが
-## pending_enemies.size()回だけ報酬画面を回す)。頭数割りが無くなったので
-## rpsを触る必要も無く、抽選した敵をそのまま返す(pick_for_stepと同じく
-## all()が毎回新しい実体を作るので共有Resourceを壊す心配もない)。
+## かつては複数体を1段下のレベルから選び、さらに総回転量を一定に保つため各体の
+## rpsを頭数で割っていた。だが割ると「衝突1回で終わる」コマになり一撃死が多発
+## (3体Lv1で12.7%)、下限を張って凌ぐ始末だった。頭数割りも1段下げも撤廃し、
+## 乱戦は頭数ぶん純粋に手強くなるが、その見返りに**倒した頭数だけ報酬を選べる**
+## (Main.gdが pending_enemies.size()回だけ報酬画面を回す)。rpsを触らないので
+## 抽選した敵をそのまま返す(pick_for_stepと同じく all()が毎回新しい実体を作るので
+## 共有Resourceを壊す心配もない)。
 static func pick_group_for_step(step: int, rng: RandomNumberGenerator = null) -> Array[EnemyData]:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
@@ -145,9 +145,8 @@ static func pick_group_for_step(step: int, rng: RandomNumberGenerator = null) ->
 	if count == 1:
 		return [pick_for_step(step, rng)]
 
-	# 複数体は1段下のレベルから選ぶ。各体は据え置き(頭数で弱めない)。
-	var member_level := maxi(level_for_step(step) - 1, 1)
-	var candidates := of_level(member_level)
+	# 複数体も単体と同じ、その段のレベルから選ぶ。各体は据え置き(頭数で弱めない)。
+	var candidates := of_level(level_for_step(step))
 	if candidates.is_empty():
 		return [pick_for_step(step, rng)]
 	var group: Array[EnemyData] = []
