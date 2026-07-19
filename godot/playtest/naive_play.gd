@@ -292,18 +292,11 @@ func _print_reachable(tree: MapTree) -> void:
 		var n: MapTree.MapNode = tree.nodes[c]
 		print("  col%+d : Lv%d %d体 %s" % [c.y, n.level(), n.enemy_count(), n.field.title_key])
 
+## プレイヤーが実際に見る効果文(describe())をそのまま出す。独自に組み立てると
+## MOMENTUM/RAGEのような非STAT効果がstat(既定MASS)で誤表示される(実際に盲プレイを
+## 「質量×0.80」等の偽カード文で汚した)。改行は1行表示用に潰す。
 func _card_text(c: CustomPart) -> String:
-	match c.effect:
-		CustomPart.Effect.SET_LIVES:
-			return "残機を%dにする" % c.lives
-		CustomPart.Effect.GHOST:
-			return "開始%.0f秒間 敵をすり抜ける" % c.ghost_seconds
-		_:
-			var stat_name: String = ["質量","直径","摩擦","反発","回転"][c.stat]
-			var cap_txt := "" if c.cap <= 0.0 else "(上限%.2f)" % c.cap
-			var dir := "UP" if c.multiplier > 1.0 else "DOWN"
-			var key: String = ["MASS","RADIUS","FRICTION","RESTITUTION","RPS"][c.stat]
-			return "%s ×%.2f%s [%s_%s]" % [stat_name, c.multiplier, cap_txt, key, dir]
+	return c.describe().replace("\n", " / ")
 
 func _rarity(r: int) -> String:
 	return "RARE" if r == CustomPart.Rarity.RARE else "COMMON"
