@@ -13,8 +13,8 @@ extends RefCounted
 ##
 ## Nodeにもシーンにも乱数にも依存しない純粋関数。時刻を渡せば同じ値が返る。
 
-## 位置の揺れ幅(ユニット)。
-const DEFAULT_POSITION_AMPLITUDE := 0.22
+## 位置の揺れ幅(ユニット)。読み取りにくさを上げるため従来の約3倍に広げてある。
+const DEFAULT_POSITION_AMPLITUDE := 0.66
 
 ## 向きの揺れ幅(度)。
 const DEFAULT_ANGLE_AMPLITUDE := 7.0
