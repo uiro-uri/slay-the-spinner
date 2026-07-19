@@ -360,9 +360,10 @@ func _test_dead_ignores_walls(check: Callable) -> void:
 	var center := bounds.get_center()
 	var dt := req.time_step
 	var t := 0.0
+	var slope_axes := FieldData.slope_axes_for(req.wall_shape, bounds)
 	for step in 40:
-		BattleResolver._integrate(alive_state, center, req, dt)
-		BattleResolver._integrate(dead_state, center, req, dt)
+		BattleResolver._integrate(alive_state, center, req, dt, slope_axes)
+		BattleResolver._integrate(dead_state, center, req, dt, slope_axes)
 		BattleResolver._resolve_body_field(alive_state, walls, req, dt, t, alive_result)
 		BattleResolver._resolve_body_field(dead_state, walls, req, dt, t, dead_result)
 		t += dt

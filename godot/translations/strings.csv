@@ -35,6 +35,8 @@ FIELD_PLATE,Shallow Plate,浅い皿
 FIELD_ARENA,Octagon Arena,八角形の闘技場
 FIELD_ROUND,Round Dish,円形の土俵
 FIELD_PILLARS,Pillar Field,柱の土俵
+FIELD_STEEP,Steep Well,急峻なすり鉢
+FIELD_OVAL,Oval Dish,横長ボウル
 ENEMY_1_1,Chipling,コマ小僧
 ENEMY_1_2,Needlet,ニードレット
 ENEMY_1_3,Pebblet,小石コマ

@@ -15,12 +15,16 @@ func run(check: Callable) -> void:
 	_test_obstacle_hit(check)
 	_test_obstacle_bounce(check)
 	_test_from_polygon(check)
+	_test_from_ellipse(check)
+	_test_slope_axes(check)
+	_test_clamp_inside_ellipse(check)
 	_test_inradius(check)
 	_test_clamp_inside_circle(check)
 	_test_roster(check)
 	_test_boss_octagon(check)
 	_test_localization(check)
 	_test_serialization(check)
+	_test_ellipse_resolve(check)
 
 
 func _stats(mass: float, radius: float, rps: float) -> SpinnerStats:
@@ -93,6 +97,73 @@ func _test_from_polygon(check: Callable) -> void:
 	check.call(all_inward, "多角形: 法線はすべて内向き")
 	check.call(all_apothem, "多角形: 辺の点は内接円(apothem)上にある")
 	check.call(normal_sum.length() < EPS, "多角形: 内向き法線の総和はゼロ(対称)")
+
+
+## 楕円の壁: 頂点は楕円上、法線は単位・内向き・総和ゼロ(対称)。
+func _test_from_ellipse(check: Callable) -> void:
+	var center := Vector2(0, 0)
+	var semi := Vector2(7.0, 4.0)
+	var sides := 32
+	var walls := ArenaWall.from_ellipse(center, semi, sides)
+
+	check.call(walls.size() == sides, "楕円壁: 辺の数だけ壁ができる (%d)" % walls.size())
+
+	var normal_sum := Vector2.ZERO
+	var all_unit := true
+	var all_inward := true
+	var all_on_ellipse := true
+	var all_gradient := true
+	for wall in walls:
+		normal_sum += wall.normal
+		if absf(wall.normal.length() - 1.0) >= EPS:
+			all_unit = false
+		# 内向き＝中心へ向かう成分が正
+		if wall.normal.dot(center - wall.point) <= 0.0:
+			all_inward = false
+		# 頂点が楕円 (x/ax)²+(y/ay)²=1 の上に乗る
+		var d := wall.point - center
+		if absf((d.x / semi.x) ** 2 + (d.y / semi.y) ** 2 - 1.0) >= EPS:
+			all_on_ellipse = false
+		# 法線は放射方向でなく楕円の勾配方向(内向き=-∇)。軸上以外では放射とずれる。
+		var inward_grad := -Vector2(d.x / semi.x ** 2, d.y / semi.y ** 2).normalized()
+		if wall.normal.dot(inward_grad) < 1.0 - EPS:
+			all_gradient = false
+	check.call(all_unit, "楕円壁: 法線はすべて単位ベクトル")
+	check.call(all_inward, "楕円壁: 法線はすべて内向き")
+	check.call(all_on_ellipse, "楕円壁: 頂点は楕円上にある")
+	check.call(all_gradient, "楕円壁: 法線は楕円の勾配方向(放射でない)")
+	check.call(normal_sum.length() < EPS, "楕円壁: 内向き法線の総和はゼロ(対称)")
+
+
+## 傾斜ワープの半軸比: ELLIPSEは積=1で横長ならax>ay、それ以外はONE。
+func _test_slope_axes(check: Callable) -> void:
+	var oval := FieldData.slope_axes_for(ArenaWall.WallShape.ELLIPSE, Rect2(0, 0, 10, 6.5))
+	check.call(absf(oval.x * oval.y - 1.0) < EPS, "傾斜軸: 積=1に正規化 (%.4f)" % (oval.x * oval.y))
+	check.call(oval.x > oval.y, "傾斜軸: 横長ならx軸が大きい (%.3f > %.3f)" % [oval.x, oval.y])
+
+	var rect := FieldData.slope_axes_for(ArenaWall.WallShape.RECT, Rect2(0, 0, 10, 10))
+	check.call(rect.is_equal_approx(Vector2.ONE), "傾斜軸: 矩形は円(ONE)")
+
+
+## 楕円クランプ: 内側は不変、外側は楕円の縁へ寄る。
+func _test_clamp_inside_ellipse(check: Callable) -> void:
+	var center := Vector2(5, 3.25)
+	var semi := Vector2(5.0, 3.25)
+	var radius := 0.5
+
+	# 中心はそのまま
+	var inside := ArenaWall.clamp_inside_ellipse(center, semi, center, radius)
+	check.call(inside.is_equal_approx(center), "楕円クランプ: 中心は不変")
+
+	# 横に大きくはみ出した点は縮小楕円の縁(x方向 semi.x-radius)へ
+	var outside := ArenaWall.clamp_inside_ellipse(center, semi, Vector2(100, 3.25), radius)
+	check.call(
+		absf(outside.x - (center.x + semi.x - radius)) < EPS,
+		"楕円クランプ: 横のはみ出しは縁へ (%.3f)" % outside.x
+	)
+	# 円クランプ(短半径)より横に広く発射できる＝横長を活かせる
+	var circ := ArenaWall.clamp_inside_circle(center, minf(semi.x, semi.y), Vector2(100, 3.25), radius)
+	check.call(outside.x > circ.x, "楕円クランプ: 円クランプより横に広い (%.3f > %.3f)" % [outside.x, circ.x])
 
 
 func _test_inradius(check: Callable) -> void:
@@ -217,3 +288,26 @@ func _test_serialization(check: Callable) -> void:
 	var a := BattleResolver.resolve(r)
 	var b := BattleResolver.resolve(BattleRequest.from_dict(r.to_dict()))
 	check.call(a.outcome == b.outcome, "直列化: 障害物ありでも同じ結果")
+
+
+## 楕円ボウルは傾斜軸を wall_shape+arena_bounds から再導出する。JSON往復で軌跡が一致すること。
+## (楕円ワープが直列化されず落ちていれば、往復後は円の傾斜になり軌跡がずれて落ちる。)
+func _test_ellipse_resolve(check: Callable) -> void:
+	var r := BattleRequest.new()
+	r.arena_bounds = Rect2(0, 0, 10, 6.5)
+	r.wall_shape = ArenaWall.WallShape.ELLIPSE
+	r.stage_shape = SpinnerPhysics.StageShape.DISH
+	# 横方向へ発射: 楕円ワープの有無で戻され方が変わる位置。
+	r.player = BattleRequest.Launch.new(_stats(1.5, 0.5, 15.0), Vector2(2, 3.25), Vector2(5, 0))
+	r.enemies = [BattleRequest.Launch.new(_stats(1.0, 0.5, 15.0), Vector2(8, 3.25), Vector2(-3, 0))]
+	r.max_duration = 8.0
+
+	var a := BattleResolver.resolve(r)
+	var b := BattleResolver.resolve(BattleRequest.from_dict(r.to_dict()))
+	check.call(a.outcome == b.outcome, "楕円: JSON往復で結果が一致(傾斜軸を再導出)")
+	# プレイヤーの最終位置まで一致(軌跡が完全再現)。
+	var same_track := a.player_frames.size() == b.player_frames.size()
+	if same_track and a.player_frames.size() > 0:
+		var last := a.player_frames.size() - 1
+		same_track = a.player_frames[last].position.is_equal_approx(b.player_frames[last].position)
+	check.call(same_track, "楕円: 往復後も軌跡が一致")
