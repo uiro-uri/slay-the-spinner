@@ -73,7 +73,7 @@ func _test_fits_inside_arena(check: Callable) -> void:
 		for trial in 50:
 			rng.seed = trial
 			var plan := EnemySpawn.plan(
-				CENTER, RING, enemy.launch_speed, 30.0, rng, radius, 5.0
+				CENTER, RING, LaunchSpeed.MAX, 30.0, rng, radius, 5.0
 			)
 			# 一番壁に近い縁が、アリーナ(0..10)の内側にあること
 			var margin := minf(
@@ -96,6 +96,10 @@ func _test_fits_inside_arena(check: Callable) -> void:
 ## 何も見えない。最初に速度比例で書いたときは長さ1.0に対しコマの半径0.5で、
 ## 実際に半分が隠れて画面上で87pxしか出ていなかった。スクショを目で見ても
 ## 気づけなかったので、数値で押さえる。
+##
+## 発射速度は自機と共通のレンジ(LaunchSpeed)から出現ごとに抽選する。予告長は
+## sqrt(速度)×length_scaleなので**最も短くなる下限(LaunchSpeed.MIN)**が最悪ケース。
+## そこで隠れなければ全速度で見える。LaunchSpeed.MINを下げるとここが最初に落ちる。
 func _test_telegraph_visible(check: Callable) -> void:
 	# 三角形の頂点はコマの中心にあるので、コマの縁より外へこれだけ出ていないと
 	# 見えたことにならない。ボスは半径3.0とアリーナに対してかなり大きいので、
@@ -106,7 +110,7 @@ func _test_telegraph_visible(check: Callable) -> void:
 	var worst_name := ""
 
 	for enemy in EnemyRoster.all():
-		telegraph.show_plan(Vector2(5, 1), Vector2.DOWN * enemy.launch_speed)
+		telegraph.show_plan(Vector2(5, 1), Vector2.DOWN * LaunchSpeed.MIN)
 		var length := telegraph.telegraph_length()
 		var margin: float = length - enemy.stats.radius
 		if margin < worst:
