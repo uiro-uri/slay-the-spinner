@@ -11,13 +11,26 @@ extends RefCounted
 ## 既に見えているので、こちらはビルドの基準値(＝開始時rps)を静的に見せる。
 
 ## 表示する行(上から順)。ラベルの翻訳キーと、整形済みの数値文字列。
-static func rows(stats: SpinnerStats) -> Array[Dictionary]:
-	return [
+##
+## ghost_seconds はゴースト札で得た無敵時間の合計(枚数×1枚あたり秒)。取得している
+## (0より大きい)ときだけ末尾に無敵時間の行を足す。未取得なら出さない。値は
+## CustomPartCatalog.total_ghost_seconds が出したものを Battle が渡す。
+static func rows(stats: SpinnerStats, ghost_seconds: float = 0.0) -> Array[Dictionary]:
+	var r: Array[Dictionary] = [
 		{"label_key": "STAT_MASS", "value": _format(stats.mass)},
 		{"label_key": "STAT_RADIUS", "value": _format(stats.radius)},
 		{"label_key": "STAT_RESTITUTION", "value": _format(stats.restitution)},
 		{"label_key": "STAT_RPS_INITIAL", "value": _format(stats.rps)},
 	]
+	if ghost_seconds > 0.0:
+		r.append({"label_key": "STAT_GHOST", "value": _format_seconds(ghost_seconds)})
+	return r
+
+
+## 秒数に単位を付けて整形する("2秒" / "2s")。単位は現在ロケールで引く
+## (GameClear.format_* と同じ流儀。静的関数からは tr() を呼べない)。
+static func _format_seconds(v: float) -> String:
+	return TranslationServer.translate("STAT_SECONDS").format([_format(v)])
 
 
 ## 数値を見やすく整形する。小数第2位まで出してから末尾の余分な0と小数点を落とす

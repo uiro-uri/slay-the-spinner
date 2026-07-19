@@ -431,7 +431,9 @@ func _build_stat_panel() -> void:
 	grid.add_theme_constant_override("v_separation", 2)
 	margin.add_child(grid)
 
-	for row in StatReadout.rows(_player.stats):
+	# ゴースト札を取得していれば無敵時間の行も出す。単体調整時は取得0で行なし。
+	var ghost_seconds := CustomPartCatalog.total_ghost_seconds(GameState.acquired_part_ids)
+	for row in StatReadout.rows(_player.stats, ghost_seconds):
 		var name_label := Label.new()
 		name_label.text = row["label_key"]
 		_style_stat_label(name_label)
