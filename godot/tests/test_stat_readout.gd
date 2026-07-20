@@ -61,6 +61,22 @@ func _test_fraction_range(check: Callable) -> void:
 		"0は空(0.0): %f" % StatReadout.rows(zero)[0]["fraction"]
 	)
 
+	# 各ステータスを到達可能な上限(カタログのCAP)まで上げたら、対応行のバーは満タン
+	# (1.0)になる。表示上限をCAPに一致させた意図を固定する ―― 特に反発は以前CAP1.0<
+	# 表示上限1.5でMAX強化でも67%止まりだった(このケースがそのリグレッションを押さえる)。
+	var capped := SpinnerStats.default_player()
+	capped.mass = CustomPartCatalog.MASS_CAP
+	capped.radius = CustomPartCatalog.RADIUS_CAP
+	capped.restitution = CustomPartCatalog.RESTITUTION_CAP
+	capped.rps = CustomPartCatalog.RPS_CAP
+	var capped_rows := StatReadout.rows(capped)
+	var cap_keys := ["STAT_MASS", "STAT_RADIUS", "STAT_RESTITUTION", "STAT_RPS_INITIAL"]
+	for i in cap_keys.size():
+		check.call(
+			absf(capped_rows[i]["fraction"] - 1.0) < EPS,
+			"%s はCAPで満タン(1.0): %f" % [cap_keys[i], capped_rows[i]["fraction"]]
+		)
+
 
 func _test_ghost_row(check: Callable) -> void:
 	var stats := SpinnerStats.default_player()

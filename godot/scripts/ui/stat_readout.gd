@@ -8,19 +8,22 @@ extends RefCounted
 ## する。cf. scripts/core/screen_layout.gd)。実際のバー生成は Battle.gd が行う。
 ##
 ## 数値の生表示は無粋なので、各ステータスは 0〜1 の割合(fraction)で返してバーで見せる。
-## 表示レンジ(*_MAX)は初期ビルドがおおむね半分になるよう取ってある ―― パーツで
-## 伸び縮みするのが一目で分かる。あくまで見た目用で、勝敗計算とは無関係。
+## あくまで見た目用で、勝敗計算とは無関係。
 ##
 ## rps は「初期回転数」として出す。ライブに減っていく回転数は画面下のHPバーで
 ## 既に見えているので、こちらはビルドの基準値(＝開始時rps)を見せる。
 
-## バーが満タンになる値(下端は0)。初期ビルド(重さ1.5/大きさ0.7/反発0.75/回転15)が
-## ほぼ中央に来るよう、既定値の約2倍を上端にしている。
-const MASS_MAX := 3.0
-const RADIUS_MAX := 1.4
-const RESTITUTION_MAX := 1.5
-const RPS_MAX := 30.0
-## 無敵時間の上端。ゴースト2枚(合計4秒)で満タン。
+## バーが満タンになる値(下端は0)。パーツはすべてバフ(デバフなし)なので、各
+## ステータスが到達できる上限はカタログのCAPそのもの。表示上限をCAPに一致させ、
+## 「MAXまで強化したらバーが満タン」になるようにする。CAPと別に表示レンジを持つと
+## ずれる(以前は反発の表示上限1.5>CAP1.0でMAX強化でもバーが67%止まりだった)ので、
+## 単一の情報源であるCustomPartCatalogのCAPを参照する。
+const MASS_MAX := CustomPartCatalog.MASS_CAP
+const RADIUS_MAX := CustomPartCatalog.RADIUS_CAP
+const RESTITUTION_MAX := CustomPartCatalog.RESTITUTION_CAP
+const RPS_MAX := CustomPartCatalog.RPS_CAP
+## 無敵時間の上端。ゴーストにはCAPが無い(重ねるほど線形に伸びる)ので、表示用に
+## ゴースト2枚(合計4秒)で満タンとしておく。
 const GHOST_MAX := 4.0
 
 
