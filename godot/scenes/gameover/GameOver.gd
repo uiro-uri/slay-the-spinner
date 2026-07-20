@@ -8,11 +8,14 @@ signal give_up_requested
 @onready var _continues_label: Label = $CenterContainer/VBoxContainer/ContinuesLabel
 @onready var _continue_button: Button = $CenterContainer/VBoxContainer/ContinueButton
 @onready var _give_up_button: Button = $CenterContainer/VBoxContainer/GiveUpButton
+## 画面隅に出す現在のバージョン表示。値の出所は project.godot の config/version。
+@onready var _version_label: Label = $VersionLabel
 
 
 func _ready() -> void:
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_give_up_button.pressed.connect(_on_give_up_pressed)
+	_version_label.text = GameVersion.display()
 
 
 ## 残りコンティニュー回数を受け取り、表示とボタンの活殺を決める。
