@@ -65,6 +65,10 @@ const BAR_ROW_H := 60.0
 ## これを下回ったら負け。
 @export_range(0.0, 1.0, 0.01) var lose_threshold: float = 0.03
 
+## 速度(linear)の上限。反発>1(Rage Reflection)で壁反射のたびに加速して
+## アリーナ外へ脱出するのを防ぐ。0以下で無制限。
+@export_range(0.0, 100.0, 1.0) var max_speed: float = 30.0
+
 ## 決着後、余韻を見せてから次へ進むまでの秒数。
 @export_range(0.0, 5.0, 0.1) var finish_delay: float = 2.0
 
@@ -507,6 +511,7 @@ func build_request(player_pos: Vector2, player_vel: Vector2) -> BattleRequest:
 	request.natural_damping = natural_damping
 	request.wall_damping = wall_damping
 	request.lose_threshold = lose_threshold
+	request.max_speed = max_speed
 	# 取得済みのゴースト札から無敵時間を決める。単体調整時は取得0で0秒になり従来どおり。
 	request.ghost_duration = CustomPartCatalog.total_ghost_seconds(GameState.acquired_part_ids)
 	return request

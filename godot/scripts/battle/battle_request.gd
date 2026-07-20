@@ -80,6 +80,11 @@ var natural_damping: float = 1.0
 var wall_damping: float = 0.75
 var lose_threshold: float = 0.03
 
+## 速度(linear)の上限。反発>1(Rage Reflection)で壁反射のたびに加速して
+## アリーナ外へ脱出するのを防ぐ。0以下で無制限。発射初速の上限はLaunchSpeed.MAX=12で、
+## 30なら1tick移動が30/60=0.5<脱出マージン1.0に収まり通常プレイのピークにも余裕がある。
+var max_speed: float = 30.0
+
 ## ゴーストの無敵時間(秒)。開始からこの時刻までプレイヤーと敵の衝突判定を切る。
 ## 0なら無効(従来どおり最初から当たる)。ゴースト札の枚数で決まる
 ## (CustomPartCatalog.total_ghost_seconds)。壁・障害物・敵同士の衝突には効かない。
@@ -109,6 +114,7 @@ func to_dict() -> Dictionary:
 		"natural_damping": natural_damping,
 		"wall_damping": wall_damping,
 		"lose_threshold": lose_threshold,
+		"max_speed": max_speed,
 		"ghost_duration": ghost_duration,
 		"time_step": time_step,
 		"max_duration": max_duration,
@@ -135,7 +141,8 @@ static func from_dict(d: Dictionary) -> BattleRequest:
 	r.natural_damping = d["natural_damping"]
 	r.wall_damping = d["wall_damping"]
 	r.lose_threshold = d["lose_threshold"]
-	# 旧い保存データにキーが無くても壊れないよう既定0で補う。
+	# 旧い保存データにキーが無くても壊れないよう既定で補う。
+	r.max_speed = d.get("max_speed", 30.0)
 	r.ghost_duration = d.get("ghost_duration", 0.0)
 	r.time_step = d["time_step"]
 	r.max_duration = d["max_duration"]

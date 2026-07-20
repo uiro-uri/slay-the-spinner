@@ -147,6 +147,15 @@ static func wall_bounce(vel: Vector2, wall_normal: Vector2, restitution: float) 
 	return vel.bounce(wall_normal) * restitution
 
 
+## 速度の大きさをmax_speedで頭打ちにする。反発>1(Rage Reflection)で壁反射の
+## たびに速度が幾何級数的に増え、1ステップで壁判定を飛び越えてアリーナ外へ
+## 脱出するのを防ぐ。max_speed<=0なら無制限。向きは保ったまま大きさだけ丸める。
+static func clamp_speed(vel: Vector2, max_speed: float) -> Vector2:
+	if max_speed <= 0.0:
+		return vel
+	return vel.limit_length(max_speed)
+
+
 ## 壁での実効rpsダンピング。wall_keep(0..1)のぶんだけ無損失(1.0)へ寄せる。
 ## wall_keep=0で従来のbase、1で1.0(壁でrpsを失わない)。Rage Reflectionが上げる。
 static func effective_wall_damping(base: float, wall_keep: float) -> float:

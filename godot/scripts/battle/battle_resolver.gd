@@ -202,6 +202,9 @@ static func _resolve_body_field(
 		_resolve_walls(s, walls, req, t, result)
 		_resolve_obstacles(s, req, t, result)
 	_apply_natural_decay(s, req, dt)
+	# 積分・disc衝突(spin_kick)・壁/障害物反射(wall_bounce)の全速度増加経路の後で
+	# 速度を頭打ちにする。反発>1で壁反射のたびに加速して脱出するのを防ぐ。
+	s.velocity = SpinnerPhysics.clamp_speed(s.velocity, req.max_speed)
 
 
 static func _resolve_walls(
