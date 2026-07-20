@@ -209,6 +209,24 @@ initialize, so it would be an untestable 50MB+ binary in the repo. When it goes 
 must sit behind an availability guard: the same codebase ships to browser (no Steam API), native
 without Steam, and native under Steam.
 
+## バージョニング
+
+バージョン番号の単一情報源は `godot/project.godot` の `application/config/version`（0.0.0 開始）。
+`scripts/core/game_version.gd` の `GameVersion.display()` がそこを読んで `vX.Y.Z` を組み立て、
+タイトル / ゲームクリア / ゲームオーバーの各画面が隅に表示する（`GameVersion.format()` は純関数で
+`test_game_version.gd` が書式と設定の同期を固定している）。
+
+番号を上げる規則:
+
+| 変更の種類 | 上げる桁 | 例 |
+|---|---|---|
+| 機能追加・バランス調整 | マイナー `+0.1` | 0.1.0 → 0.2.0 |
+| バグ修正 | パッチ `+0.0.1` | 0.2.0 → 0.2.1 |
+| メジャー | 指定時のみ | 0.9.0 → 1.0.0 |
+
+変更をマージするたびに `project.godot` の `config/version` を上げ、`CHANGELOG.md`（リポジトリルート）
+に同じ番号で一項目追記する。
+
 ## Conventions
 
 - Build output goes to `build/` at the repo root, deliberately outside `godot/`. Inside it, Godot

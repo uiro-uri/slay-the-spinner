@@ -9,10 +9,13 @@ signal to_title_requested
 @onready var _streak_label: Label = $CenterContainer/VBoxContainer/StreakLabel
 @onready var _acquired_list: GridContainer = $CenterContainer/VBoxContainer/List
 @onready var _to_title_button: Button = $CenterContainer/VBoxContainer/ToTitleButton
+## 画面隅に出す現在のバージョン表示。値の出所は project.godot の config/version。
+@onready var _version_label: Label = $VersionLabel
 
 
 func _ready() -> void:
 	_to_title_button.pressed.connect(_on_to_title_pressed)
+	_version_label.text = GameVersion.display()
 
 
 ## 取得パーツは2列で並べる。パーツは最大5種なのでスクロールさせず全部見せられる。

@@ -11,12 +11,15 @@ signal sound_test_requested
 ## 自機のコマ(手続き描画のDisc)を回転表示する。位置は下のDiscAnchorに合わせる。
 @onready var _player_preview: Node2D = $PlayerPreview
 @onready var _disc_anchor: Control = $CenterContainer/VBoxContainer/DiscAnchor
+## 画面隅に出す現在のバージョン表示。値の出所は project.godot の config/version。
+@onready var _version_label: Label = $VersionLabel
 
 
 func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_language_button.pressed.connect(_on_language_pressed)
 	_sound_test_button.pressed.connect(_on_sound_test_pressed)
+	_version_label.text = GameVersion.display()
 
 	# 現在の連続クリア記録。まだ1回も勝ち切っていない(0)ならラベルごと隠して
 	# タイトルをすっきりさせる。1以上のときだけ「連続クリア: N」を出す。
