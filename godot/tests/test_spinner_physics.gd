@@ -40,6 +40,7 @@ func run(check: Callable) -> void:
 	_test_spin_drain(check)
 	_test_spin_kick(check)
 	_test_wall(check)
+	_test_clamp_speed(check)
 	_test_natural_decay(check)
 
 
@@ -334,6 +335,26 @@ func _test_wall(check: Callable) -> void:
 		SpinnerPhysics.effective_wall_damping(0.8, 0.5) > SpinnerPhysics.effective_wall_damping(0.8, 0.0),
 		"壁rps保持: keepが増えると壁でのrps喪失が減る"
 	)
+
+
+## 速度上限。反発>1(Rage Reflection)で壁反射のたびに加速して脱出するのを防ぐ。
+func _test_clamp_speed(check: Callable) -> void:
+	# 上限超は大きさが上限に丸められ、向きは保たれる。
+	var fast := SpinnerPhysics.clamp_speed(Vector2(30, 40), 10.0)  # 元の大きさ50
+	check.call(absf(fast.length() - 10.0) < EPS, "速度上限: 上限超は大きさが上限に丸まる (%.3f)" % fast.length())
+	check.call(
+		fast.normalized().dot(Vector2(30, 40).normalized()) > 0.999,
+		"速度上限: 丸めても向きは保たれる"
+	)
+	# 上限以下は不変。
+	var slow := SpinnerPhysics.clamp_speed(Vector2(3, 4), 10.0)  # 大きさ5
+	check.call(slow.is_equal_approx(Vector2(3, 4)), "速度上限: 上限以下は不変")
+	# max_speed<=0は無制限(不変)。
+	var uncapped := SpinnerPhysics.clamp_speed(Vector2(30, 40), 0.0)
+	check.call(uncapped.is_equal_approx(Vector2(30, 40)), "速度上限: <=0は無制限で不変")
+	# ゼロベクトルはNaNにならずゼロのまま。
+	var zero := SpinnerPhysics.clamp_speed(Vector2.ZERO, 10.0)
+	check.call(zero == Vector2.ZERO, "速度上限: ゼロはゼロのまま(nanにならない)")
 
 
 func _test_natural_decay(check: Callable) -> void:

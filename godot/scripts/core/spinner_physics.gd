@@ -89,7 +89,8 @@ static func is_colliding(
 ## 中心線方向の分離速度が e 倍に落ちる（e=0で法線方向に一体化）。一般化は
 ## 弾性の係数 2 を (1+e) に置き換えるだけ。壁のrestitutionと同じ意味の係数を
 ## コマ同士の衝突にも効かせるための引数（Rage Reflectionの想定）。
-## e>1は壁と同様に衝突ごとに加速して発散するので、呼び出し側で[0,1]にクランプする。
+## e>1は衝突ごとに加速するが、発散は呼び出し側の速度上限(max_speed)が毎tick抑える
+## のでここではクランプしない（反発>1を敵衝突にも効かせる）。
 static func elastic_velocities(
 	pos_a: Vector2, vel_a: Vector2, mass_a: float,
 	pos_b: Vector2, vel_b: Vector2, mass_b: float,
@@ -145,6 +146,15 @@ static func wall_hit(
 ## 壁で反射した後の速度。restitutionで勢いが変わる。
 static func wall_bounce(vel: Vector2, wall_normal: Vector2, restitution: float) -> Vector2:
 	return vel.bounce(wall_normal) * restitution
+
+
+## 速度の大きさをmax_speedで頭打ちにする。反発>1(Rage Reflection)で壁反射の
+## たびに速度が幾何級数的に増え、1ステップで壁判定を飛び越えてアリーナ外へ
+## 脱出するのを防ぐ。max_speed<=0なら無制限。向きは保ったまま大きさだけ丸める。
+static func clamp_speed(vel: Vector2, max_speed: float) -> Vector2:
+	if max_speed <= 0.0:
+		return vel
+	return vel.limit_length(max_speed)
 
 
 ## 壁での実効rpsダンピング。wall_keep(0..1)のぶんだけ無損失(1.0)へ寄せる。

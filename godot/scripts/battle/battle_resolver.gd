@@ -163,8 +163,9 @@ static func _resolve_disc_collision(
 	# コマ同士の衝突の反発係数は両者restitutionの積。低い方に引きずられ、
 	# プレイヤーの基礎restitution(0.75)ぶんだけ非弾性になる。Rage Reflectionで
 	# restitutionが上がると弾性が戻り、当たったとき勢いを保って弾け返る。
-	# e>1は壁と同様に発散するので[0,1]にクランプ（敵は現状1.0だが防御的に）。
-	var pair_restitution := clampf(a.stats.restitution * b.stats.restitution, 0.0, 1.0)
+	# 以前はe>1の発散を嫌って[0,1]にクランプしていたが、速度上限(max_speed)で
+	# 毎tick発散を抑えるようになったのでクランプせず、反発>1を敵衝突にも効かせる。
+	var pair_restitution := a.stats.restitution * b.stats.restitution
 	var bounced := SpinnerPhysics.elastic_velocities(
 		a.position, a.velocity, a.stats.mass,
 		b.position, b.velocity, b.stats.mass,
@@ -202,6 +203,9 @@ static func _resolve_body_field(
 		_resolve_walls(s, walls, req, t, result)
 		_resolve_obstacles(s, req, t, result)
 	_apply_natural_decay(s, req, dt)
+	# 積分・disc衝突(spin_kick)・壁/障害物反射(wall_bounce)の全速度増加経路の後で
+	# 速度を頭打ちにする。反発>1で壁反射のたびに加速して脱出するのを防ぐ。
+	s.velocity = SpinnerPhysics.clamp_speed(s.velocity, req.max_speed)
 
 
 static func _resolve_walls(

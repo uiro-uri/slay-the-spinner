@@ -333,10 +333,16 @@ func _test_no_debuffs(check: Callable) -> void:
 			]
 		)
 
-	# 反発の上限は1.0以下であること。超えると壁で跳ねるたびに加速して発散する。
+	# 反発の上限は1.0を超えてよい(Rage Reflectionの攻撃的な壁押し込み)が、
+	# 際限なくは上げない。反発>1は壁反射のたびに加速するので、BattleRequestの
+	# 速度上限(max_speed>0)で発散を抑える前提でのみ許容する。両者が揃うことを見る。
 	check.call(
-		CustomPartCatalog.RESTITUTION_CAP <= 1.0,
-		"反発の上限が1.0以下 (%.2f)。超えると壁で加速して発散する" % CustomPartCatalog.RESTITUTION_CAP
+		CustomPartCatalog.RESTITUTION_CAP <= 2.0,
+		"反発の上限が過大でない(<=2.0, %.2f)" % CustomPartCatalog.RESTITUTION_CAP
+	)
+	check.call(
+		BattleRequest.new().max_speed > 0.0,
+		"反発>1の発散を抑える速度上限がある (max_speed=%.1f)" % BattleRequest.new().max_speed
 	)
 
 
@@ -404,7 +410,7 @@ func _test_rage(check: Callable) -> void:
 	check.call(rage.effect == CustomPart.Effect.RAGE, "怒りの反射: 効果種別がRAGE")
 
 	# 1枚で反発が上がり、壁rps保持も上がる（複合）。
-	# 実プレイの初期反発は0.75(上限1.0未満)なので、そこから上がることを見る。
+	# 実プレイの初期反発は0.75なので、そこから上がることを見る。
 	var s := _stats()
 	s.restitution = 0.75
 	var before_rest := s.restitution
@@ -413,7 +419,7 @@ func _test_rage(check: Callable) -> void:
 	check.call(s.restitution > before_rest, "怒りの反射: 反発が上がる (%.3f -> %.3f)" % [before_rest, s.restitution])
 	check.call(s.wall_keep > before_keep, "怒りの反射: 壁rps保持が上がる (%.3f -> %.3f)" % [before_keep, s.wall_keep])
 
-	# 反発はRESTITUTION_CAP(1.0)を超えない。壁rps保持はRAGE_WALL_KEEP_MAXで頭打ち
+	# 反発はRESTITUTION_CAP(1.5)を超えない。壁rps保持はRAGE_WALL_KEEP_MAXで頭打ち
 	# (1.0=完全無損失まで許すと無敵化するため低く抑える)。
 	s = _stats()
 	for i in 10:
