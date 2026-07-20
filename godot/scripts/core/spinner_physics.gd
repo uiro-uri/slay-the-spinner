@@ -110,14 +110,16 @@ static func elastic_velocities(
 	return [new_a, new_b]
 
 
-## 衝突で削られるRPS量。相手が重く速いほど大きく、自分が重く大きいほど小さい。
+## 衝突で削られるRPS量。相手が重く、ぶつかる相対速度が大きいほど大きく、
+## 自分が重く大きいほど小さい。impact_speedは2体の相対速度の大きさ＝ぶつかる勢いで、
+## 相手の絶対速度ではない（同方向に流れて実際にはほぼ触れていない衝突では小さくなる）。
 static func spin_drain(
-	opponent_mass: float, opponent_speed: float,
+	opponent_mass: float, impact_speed: float,
 	own_mass: float, own_radius: float, violence: float
 ) -> float:
 	if own_mass <= 0.0 or own_radius <= 0.0:
 		return 0.0
-	return violence * (opponent_mass * opponent_speed) / (own_mass * own_radius * own_radius)
+	return violence * (opponent_mass * impact_speed) / (own_mass * own_radius * own_radius)
 
 
 ## 回転が並進運動に変わって弾き合う分の速度。相手から離れる向きに働く。

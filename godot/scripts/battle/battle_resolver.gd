@@ -155,9 +155,10 @@ static func _resolve_disc_collision(
 	) / (a.stats.radius + b.stats.radius)
 	result.impacts.append(BattleResult.Impact.new(t, contact))
 
-	# 削り量は衝突前の速さで決める。弾性衝突で速度が変わる前に取っておく。
-	var a_speed := a.velocity.length()
-	var b_speed := b.velocity.length()
+	# 削り量は衝突前の相対速さ（ぶつかる勢い）で決める。相手の絶対速度ではなく
+	# 2体の相対速度に依存させる。弾性衝突で速度が変わる前に取っておく。
+	# 相対速度は対称なので両者で同じ値を使い、削り量の非対称性は質量・半径だけが担う。
+	var rel_speed := (a.velocity - b.velocity).length()
 
 	# コマ同士の衝突の反発係数は両者restitutionの積。低い方に引きずられ、
 	# プレイヤーの基礎restitution(0.75)ぶんだけ非弾性になる。Rage Reflectionで
@@ -173,10 +174,10 @@ static func _resolve_disc_collision(
 	b.velocity = bounced[1]
 
 	var a_drain := SpinnerPhysics.spin_drain(
-		b.stats.mass, b_speed, a.stats.mass, a.stats.radius, req.violence
+		b.stats.mass, rel_speed, a.stats.mass, a.stats.radius, req.violence
 	)
 	var b_drain := SpinnerPhysics.spin_drain(
-		a.stats.mass, a_speed, b.stats.mass, b.stats.radius, req.violence
+		a.stats.mass, rel_speed, b.stats.mass, b.stats.radius, req.violence
 	)
 
 	a.velocity += SpinnerPhysics.spin_kick(

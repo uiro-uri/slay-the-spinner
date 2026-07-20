@@ -260,10 +260,10 @@ func _test_spin_drain(check: Callable) -> void:
 	var heavy := SpinnerPhysics.spin_drain(4.0, 5.0, 2.0, 0.5, 0.08)
 	check.call(heavy > light, "RPS減少: 相手が重いほど大きい")
 
-	# 相手が速いほど削られる
+	# ぶつかる相対速さが大きいほど削られる（第2引数は相手の絶対速度ではなく相対速度）
 	var slow := SpinnerPhysics.spin_drain(2.0, 1.0, 2.0, 0.5, 0.08)
 	var fast := SpinnerPhysics.spin_drain(2.0, 9.0, 2.0, 0.5, 0.08)
-	check.call(fast > slow, "RPS減少: 相手が速いほど大きい")
+	check.call(fast > slow, "RPS減少: 相対速さが大きいほど大きい")
 
 	# 自分が重い/大きいほど削られにくい
 	var frail := SpinnerPhysics.spin_drain(2.0, 5.0, 1.0, 0.5, 0.08)
