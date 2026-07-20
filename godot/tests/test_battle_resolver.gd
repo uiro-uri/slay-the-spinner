@@ -20,6 +20,7 @@ func run(check: Callable) -> void:
 	_test_multi_enemy(check)
 	_test_dead_ignores_walls(check)
 	_test_ghost_disables_early_collision(check)
+	_test_relative_speed_drain(check)
 
 
 func _stats(mass: float, radius: float, rps: float) -> SpinnerStats:
@@ -410,3 +411,45 @@ func _test_ghost_disables_early_collision(check: Callable) -> void:
 		early == 0,
 		"ゴースト: 無敵時間中はプレイヤーと敵の衝突が記録されない (%d回)" % early
 	)
+
+
+## 削り量が相手の絶対速度ではなく2体の相対速度に依存することを確かめる。
+## 相手の絶対速度が同じでも、自分も同方向に流れて相対速度が小さい衝突では
+## 削られる量が小さくなる。旧実装(相手の絶対速度のみ依存)ではA/Bが等しくなり落ちる。
+func _test_relative_speed_drain(check: Callable) -> void:
+	var req := _request()
+	var stats_a := _stats(1.5, 0.5, 15.0)
+	var stats_b := _stats(1.0, 0.5, 15.0)
+
+	# シナリオA: 自分は静止、相手が速さ3で正面から突っ込む。相対速さ=3。
+	var drop_a := _collide_and_player_drop(
+		req, stats_a, Vector2.ZERO, Vector2.ZERO,
+		stats_b, Vector2(1, 0), Vector2(-3, 0)
+	)
+	# シナリオB: 相手の絶対速度はAと同じ(速さ3)だが、自分も同方向へ速さ2で流れる。
+	# 相対速さ=1に下がる。旧実装は相手の絶対速度3だけを見るのでAと同じ削りになる。
+	var drop_b := _collide_and_player_drop(
+		req, stats_a, Vector2.ZERO, Vector2(-2, 0),
+		stats_b, Vector2(1, 0), Vector2(-3, 0)
+	)
+
+	check.call(drop_a > 0.0, "相対速度削り: 正面衝突で削られる (%.4f)" % drop_a)
+	check.call(drop_b > 0.0, "相対速度削り: 相対速度が小さくても削られる (%.4f)" % drop_b)
+	check.call(
+		drop_a > drop_b + EPS,
+		"相対速度削り: 相手の絶対速度が同じでも相対速度が大きい方が削られる (A=%.4f > B=%.4f)"
+			% [drop_a, drop_b]
+	)
+
+
+## a(プレイヤー)とb(敵)を1回だけ衝突させ、aのrps減少量を返す補助。
+func _collide_and_player_drop(
+	req: BattleRequest,
+	stats_a: SpinnerStats, pos_a: Vector2, vel_a: Vector2,
+	stats_b: SpinnerStats, pos_b: Vector2, vel_b: Vector2
+) -> float:
+	var a := BattleResolver.State.new(BattleRequest.Launch.new(stats_a, pos_a, vel_a))
+	var b := BattleResolver.State.new(BattleRequest.Launch.new(stats_b, pos_b, vel_b))
+	var before := a.rps
+	BattleResolver._resolve_disc_collision(a, b, req, 0.0, BattleResult.new())
+	return before - a.rps
